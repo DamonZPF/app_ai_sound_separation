@@ -1,0 +1,233 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Chinese (`zh`).
+class AppLocalizationsZh extends AppLocalizations {
+  AppLocalizationsZh([String locale = 'zh']) : super(locale);
+
+  @override
+  String get appTitle => 'AI音频分离';
+
+  @override
+  String get tabHome => '首页';
+
+  @override
+  String get tabHistory => '历史记录';
+
+  @override
+  String get tabMine => '我的';
+
+  @override
+  String get homeTitle => 'AI音频分离';
+
+  @override
+  String get homeSubtitle => '智能音轨分离工具';
+
+  @override
+  String get typeVocals => '人声提取';
+
+  @override
+  String get typeVocalsDesc => '提取歌曲中的人声';
+
+  @override
+  String get typeNoise => '伴奏提取';
+
+  @override
+  String get typeNoiseDesc => '去除人声保留伴奏';
+
+  @override
+  String get typeDrums => '鼓点分离';
+
+  @override
+  String get typeDrumsDesc => '提取鼓和打击乐器';
+
+  @override
+  String get typeBass => '贝斯分离';
+
+  @override
+  String get typeBassDesc => '提取贝斯音轨';
+
+  @override
+  String get typePiano => '钢琴分离';
+
+  @override
+  String get typePianoDesc => '提取钢琴音轨';
+
+  @override
+  String get typeOther => '其他乐器';
+
+  @override
+  String get typeOtherDesc => '提取其他乐器音轨';
+
+  @override
+  String get uploadTitle => '上传音频';
+
+  @override
+  String get uploadSelectFile => '选择本地文件';
+
+  @override
+  String get uploadInputUrl => '输入音频链接';
+
+  @override
+  String get uploadUrlHint => '请输入音频或视频URL';
+
+  @override
+  String get uploadUrlDialogTitle => '输入链接';
+
+  @override
+  String get uploadUrlDialogCancel => '取消';
+
+  @override
+  String get uploadUrlDialogConfirm => '确认';
+
+  @override
+  String get uploadSupported => '支持 MP3、WAV、FLAC、M4A 等常见格式';
+
+  @override
+  String get uploadSourceItunes => 'iTunes';
+
+  @override
+  String get uploadSourceItunesDesc => '设备上已下载的本地音轨';
+
+  @override
+  String get uploadSourceCameraRoll => '相机胶卷';
+
+  @override
+  String get uploadSourceCameraRollDesc => '设备相册中的任何视频';
+
+  @override
+  String get uploadSourceFiles => '文件';
+
+  @override
+  String get uploadSourceFilesDesc => '文档中的音频文件';
+
+  @override
+  String get uploadSourceUrl => '从 URL 导入';
+
+  @override
+  String get uploadSourceUrlDesc => '来自云服务或公共 URL 的任何媒体';
+
+  @override
+  String get uploadMaxSize => '单文件最大 200MB';
+
+  @override
+  String get uploadFaqTitle => '常见问题';
+
+  @override
+  String get uploadProgress => '上传中...';
+
+  @override
+  String get uploadSuccess => '上传成功，已提交分离任务';
+
+  @override
+  String get uploadFailed => '上传失败';
+
+  @override
+  String get historyTitle => '历史记录';
+
+  @override
+  String get historyEmpty => '暂无历史记录';
+
+  @override
+  String get historyEmptyHint => '完成一次音频分离后将显示在这里';
+
+  @override
+  String get historyStatusUploading => '上传中';
+
+  @override
+  String get historyStatusPending => '等待处理';
+
+  @override
+  String get historyStatusProcessing => '处理中';
+
+  @override
+  String get historyStatusCompleted => '已完成';
+
+  @override
+  String get historyStatusFailed => '失败';
+
+  @override
+  String get historyPlay => '播放';
+
+  @override
+  String get historyPause => '暂停';
+
+  @override
+  String get historyDownload => '下载';
+
+  @override
+  String get historyDelete => '删除';
+
+  @override
+  String get historyDeleteConfirm => '确定要删除这条记录吗？';
+
+  @override
+  String get historyRetry => '重试';
+
+  @override
+  String get mineTitle => '我的';
+
+  @override
+  String get mineAnonymousUser => '匿名用户';
+
+  @override
+  String get mineUserId => '用户ID';
+
+  @override
+  String get mineUsageGuide => '使用须知';
+
+  @override
+  String get mineAbout => '关于';
+
+  @override
+  String get mineVersion => '版本';
+
+  @override
+  String get mineLanguage => '语言';
+
+  @override
+  String get mineChinese => '中文';
+
+  @override
+  String get mineEnglish => 'English';
+
+  @override
+  String get confirm => '确认';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get ok => '好的';
+
+  @override
+  String get error => '错误';
+
+  @override
+  String get loading => '加载中...';
+
+  @override
+  String get networkError => '网络错误，请稍后重试';
+
+  @override
+  String get usageGuideContent =>
+      '1. 本工具使用AI技术进行音频分离\n2. 支持多种音频格式\n3. 单次处理时间取决于文件大小\n4. 处理完成后可在线试听和下载\n5. 免费版有一定使用限制';
+
+  @override
+  String get downloadPreparing => '准备下载中...';
+
+  @override
+  String get downloadFailed => '下载失败';
+
+  @override
+  String get downloadSuccess => '下载完成';
+
+  @override
+  String get playFailed => '播放失败';
+
+  @override
+  String get share => '分享';
+}

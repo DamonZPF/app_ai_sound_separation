@@ -5,6 +5,7 @@ import 'pages/home_page.dart';
 import 'pages/history_page.dart';
 import 'pages/profile_page.dart';
 import 'services/supabase_service.dart';
+import 'services/pending_task_store.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
@@ -18,6 +19,9 @@ void main() async {
 
   // 3. 设备 ID 匿名登录
   await signInWithDeviceId();
+
+  // 4. 初始化待处理任务存储（从 SharedPreferences 恢复）
+  await PendingTaskStore.instance.init();
 
   runApp(const AISoundApp());
 }

@@ -50,6 +50,7 @@
   "historyPlay": "Play",
   "historyPause": "Pause",
   "historyDownload": "Download",
+  "historyTrackCount": "{count} tracks",
   "historyDelete": "Delete",
   "historyDeleteConfirm": "Are you sure you want to delete this record?",
   "historyRetry": "Retry",
@@ -73,5 +74,17 @@
   "downloadFailed": "Download failed",
   "downloadSuccess": "Download complete",
   "playFailed": "Playback failed",
-  "share": "Share"
+  "share": "Share",
+  "stemLabelVocals": "Vocals",
+  "stemLabelVoiceClean": "Clean Voice",
+  "stemLabelDrum": "Drums",
+  "stemLabelBass": "Bass",
+  "stemLabelAcousticGuitar": "Acoustic Guitar",
+  "stemLabelElectricGuitar": "Electric Guitar",
+  "stemLabelPiano": "Piano",
+  "stemLabelSynthesizer": "Synthesizer",
+  "stemLabelStrings": "Strings",
+  "stemLabelWind": "Wind",
+  "stemLabelAccompaniment": "Accompaniment",
+  "stemLabelOther": "Other"
 }

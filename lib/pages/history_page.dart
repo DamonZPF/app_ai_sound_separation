@@ -1,5 +1,8 @@
 // 历史记录页面
 // 合并展示：本地队列任务（上传中/处理中/失败）+ 远程已完成结果
+// 远程结果按任务分组（与小程序一致）：同一首歌的分轨结果聚合到一张卡片
+// 增加轮询机制：页面可见时每 5 秒查询 PendingTaskStore 中的任务状态
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:just_audio/just_audio.dart';
@@ -9,7 +12,53 @@ import '../l10n/app_localizations.dart';
 import '../services/stem_api_service.dart';
 import '../services/audio_player_service.dart';
 import '../services/upload_task_queue.dart';
+import '../services/pending_task_store.dart';
 import '../models/stem_task.dart';
+import '../widgets/waveform_bar.dart';
+
+/// 将后端 stemType / type 映射到国际化标签
+String localizedStemLabel(AppLocalizations l10n, String stemType, String type) {
+  if (type == 'back') return l10n.stemLabelAccompaniment;
+  switch (stemType) {
+    case 'vocals':
+      return l10n.stemLabelVocals;
+    case 'voice_clean':
+      return l10n.stemLabelVoiceClean;
+    case 'drum':
+      return l10n.stemLabelDrum;
+    case 'bass':
+      return l10n.stemLabelBass;
+    case 'acoustic_guitar':
+      return l10n.stemLabelAcousticGuitar;
+    case 'electric_guitar':
+      return l10n.stemLabelElectricGuitar;
+    case 'piano':
+      return l10n.stemLabelPiano;
+    case 'synthesizer':
+      return l10n.stemLabelSynthesizer;
+    case 'strings':
+      return l10n.stemLabelStrings;
+    case 'wind':
+      return l10n.stemLabelWind;
+    default:
+      return l10n.stemLabelOther;
+  }
+}
+
+/// 历史分组：同一首歌的所有分轨结果
+class _HistoryGroup {
+  final String trackTitle;
+  final String stemType;
+  final String date; // yyyy-MM-dd
+  final List<StemResultItem> items;
+
+  _HistoryGroup({
+    required this.trackTitle,
+    required this.stemType,
+    required this.date,
+    required this.items,
+  });
+}
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -18,41 +67,156 @@ class HistoryPage extends StatefulWidget {
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
+class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
   final _stemApi = StemApiService();
   final _audio = AudioPlayerService.instance;
   final _queue = UploadTaskQueue.instance;
-  List<StemResultItem> _results = [];
+  final _pendingStore = PendingTaskStore.instance;
+  List<_HistoryGroup> _groups = [];
   bool _loading = true;
+
+  /// 轮询定时器
+  Timer? _pollTimer;
+
+  /// 避免并发轮询
+  bool _polling = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadHistory();
+    _startPolling();
   }
 
   @override
   void dispose() {
+    _stopPolling();
+    WidgetsBinding.instance.removeObserver(this);
     _audio.stop();
     super.dispose();
   }
 
-  Future<void> _loadHistory() async {
-    setState(() => _loading = true);
-    final results = await _stemApi.getHistory();
-    setState(() {
-      _results = results;
-      _loading = false;
-    });
+  /// App 前后台切换时控制轮询
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startPolling();
+      _loadHistory(); // 回到前台时也刷新一次历史
+    } else if (state == AppLifecycleState.paused) {
+      _stopPolling();
+    }
   }
 
-  Future<void> _deleteResult(String resultId) async {
-    final ok = await _stemApi.deleteResult(resultId);
-    if (ok) {
+  void _startPolling() {
+    _stopPolling();
+    // 立刻执行一次
+    _pollPendingTasks();
+    // 每 5 秒轮询
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _pollPendingTasks();
+    });
+    debugPrint('[HistoryPage] ✅ 轮询已启动');
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    debugPrint('[HistoryPage] ⏹ 轮询已停止');
+  }
+
+  /// 轮询 PendingTaskStore 中所有待处理任务的服务端状态
+  Future<void> _pollPendingTasks() async {
+    if (_polling) return;
+    final pending = _pendingStore.tasks;
+    if (pending.isEmpty) return;
+
+    _polling = true;
+    bool anyCompleted = false;
+
+    for (final task in List.of(pending)) {
+      try {
+        final data = await _stemApi.getTaskDetail(task.stemTaskId);
+        final status = (data['status'] ?? '').toString();
+        debugPrint(
+            '[HistoryPage] 轮询 ${task.stemTaskId}: status=$status');
+
+        if (status == 'completed' || status == 'failed' || status == 'error') {
+          await _pendingStore.removeTask(task.stemTaskId);
+          anyCompleted = true;
+        }
+      } catch (e) {
+        debugPrint('[HistoryPage] 轮询异常: ${task.stemTaskId}, $e');
+      }
+    }
+
+    // 有任务完成时刷新远程历史列表
+    if (anyCompleted && mounted) {
+      await _loadHistory();
+    }
+    _polling = false;
+  }
+
+  /// 将扁平结果列表按 trackTitle + stemType + 日期 分组
+  List<_HistoryGroup> _groupResults(List<StemResultItem> results) {
+    final Map<String, _HistoryGroup> map = {};
+
+    for (final item in results) {
+      final title = item.trackTitle ?? '';
+      final date =
+          (item.createdAt != null && item.createdAt!.length >= 10)
+              ? item.createdAt!.substring(0, 10)
+              : '';
+      final key = '$title|${item.stemType}|$date';
+
+      if (map.containsKey(key)) {
+        map[key]!.items.add(item);
+      } else {
+        map[key] = _HistoryGroup(
+          trackTitle: title,
+          stemType: item.stemType,
+          date: date,
+          items: [item],
+        );
+      }
+    }
+
+    return map.values.toList();
+  }
+
+  Future<void> _loadHistory() async {
+    if (mounted) setState(() => _loading = true);
+    final results = await _stemApi.getHistory();
+    if (mounted) {
       setState(() {
-        _results.removeWhere((r) => r.id == resultId);
+        _groups = _groupResults(results);
+        _loading = false;
       });
     }
+  }
+
+  /// 删除整组结果
+  Future<void> _deleteGroup(_HistoryGroup group) async {
+    for (final item in group.items) {
+      await _stemApi.deleteResult(item.id);
+    }
+    if (mounted) {
+      setState(() {
+        _groups.remove(group);
+      });
+    }
+  }
+
+  /// 删除单条子轨道
+  Future<void> _deleteSingleItem(_HistoryGroup group, StemResultItem item) async {
+    final ok = await _stemApi.deleteResult(item.id);
+    if (!ok || !mounted) return;
+    setState(() {
+      group.items.remove(item);
+      if (group.items.isEmpty) {
+        _groups.remove(group);
+      }
+    });
   }
 
   @override
@@ -71,7 +235,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   // 过滤掉已完成的队列任务（它们会出现在远程历史中）
                   final activeTasks =
                       queueTasks.where((t) => !t.isCompleted).toList();
-                  final totalCount = activeTasks.length + _results.length;
+                  final totalCount = activeTasks.length + _groups.length;
 
                   if (totalCount == 0) {
                     return _buildEmpty(context);
@@ -80,7 +244,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: totalCount,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       // 队列任务在前
                       if (i < activeTasks.length) {
@@ -92,12 +256,14 @@ class _HistoryPageState extends State<HistoryPage> {
                               _queue.removeTask(activeTasks[i].stemTaskId),
                         );
                       }
-                      // 远程历史在后
-                      final ri = i - activeTasks.length;
-                      return _ResultCard(
-                        result: _results[ri],
+                      // 远程历史（分组卡片）在后
+                      final gi = i - activeTasks.length;
+                      return _GroupedResultCard(
+                        group: _groups[gi],
                         audioService: _audio,
-                        onDelete: () => _deleteResult(_results[ri].id),
+                        onDeleteGroup: () => _deleteGroup(_groups[gi]),
+                        onDeleteItem: (item) =>
+                            _deleteSingleItem(_groups[gi], item),
                       );
                     },
                   );
@@ -137,7 +303,7 @@ class _HistoryPageState extends State<HistoryPage> {
 }
 
 // ──────────────────────────────────────────────
-// 队列任务卡片（上传中 / 处理中 / 失败）
+// 队列任务卡片（上传中 / 处理中 / 失败）— 保持不变
 // ──────────────────────────────────────────────
 class _QueueTaskCard extends StatelessWidget {
   final StemTask task;
@@ -266,44 +432,187 @@ class _QueueTaskCard extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────────
-// 远程结果卡片（与原实现一致）
+// 分组结果卡片（与小程序对齐）
+// 一张卡片 = 一个分离任务 = 多条子轨道
 // ──────────────────────────────────────────────
-class _ResultCard extends StatefulWidget {
-  final StemResultItem result;
+class _GroupedResultCard extends StatefulWidget {
+  final _HistoryGroup group;
   final AudioPlayerService audioService;
-  final VoidCallback onDelete;
+  final VoidCallback onDeleteGroup;
+  final void Function(StemResultItem item) onDeleteItem;
 
-  const _ResultCard({
-    required this.result,
+  const _GroupedResultCard({
+    required this.group,
     required this.audioService,
-    required this.onDelete,
+    required this.onDeleteGroup,
+    required this.onDeleteItem,
   });
 
   @override
-  State<_ResultCard> createState() => _ResultCardState();
+  State<_GroupedResultCard> createState() => _GroupedResultCardState();
 }
 
-class _ResultCardState extends State<_ResultCard> {
-  bool _downloading = false;
+class _GroupedResultCardState extends State<_GroupedResultCard> {
+  bool _expanded = false;
 
+  /// 显示标题：优先 trackTitle，否则 stemType
   String get _title {
-    if (widget.result.trackTitle?.isNotEmpty == true) {
-      return widget.result.trackTitle!;
-    }
-    if (widget.result.displayLabel.isNotEmpty) return widget.result.displayLabel;
-    return widget.result.stemType;
+    final t = widget.group.trackTitle;
+    return t.isNotEmpty ? t : widget.group.stemType;
   }
 
-  String get _dateStr {
-    final ca = widget.result.createdAt;
-    if (ca == null || ca.isEmpty) return '';
-    return ca.length >= 10 ? ca.substring(0, 10) : ca;
+  /// 分离类型标签：使用国际化映射
+  String _typeLabel(AppLocalizations l10n) {
+    final first = widget.group.items.first;
+    return localizedStemLabel(l10n, first.stemType, first.type);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final trackCount = widget.group.items.length;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── 标题行：歌曲名 + 展开/收起箭头 ───
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 标题 + 副标题
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _title,
+                          style: theme.textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.historyTrackCount(trackCount),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // 展开/收起箭头（绿色）
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 24,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // ─── 展开内容 ───
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ─── 类型标签 ───
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          _typeLabel(l10n),
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ─── 子轨道列表 ───
+                      ...widget.group.items.map((item) => _TrackRow(
+                            result: item,
+                            audioService: widget.audioService,
+                            onDeleteItem: () => widget.onDeleteItem(item),
+                          )),
+                    ],
+                  ),
+                ),
+                crossFadeState: _expanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 250),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// 单条子轨道行（嵌入分组卡片内）
+// 布局：播放按钮 | 名称 | 分享 | 删除
+// 下方始终显示进度条 + 时间
+// ──────────────────────────────────────────────
+class _TrackRow extends StatefulWidget {
+  final StemResultItem result;
+  final AudioPlayerService audioService;
+  final VoidCallback onDeleteItem;
+
+  const _TrackRow({
+    required this.result,
+    required this.audioService,
+    required this.onDeleteItem,
+  });
+
+  @override
+  State<_TrackRow> createState() => _TrackRowState();
+}
+
+class _TrackRowState extends State<_TrackRow> {
+  bool _downloading = false;
+
+  /// 显示名称：使用国际化映射
+  String _label(AppLocalizations l10n) {
+    return localizedStemLabel(l10n, widget.result.stemType, widget.result.type);
   }
 
   Future<void> _playAudio() async {
-    if (widget.result.url.isEmpty) return;
+    final url = widget.result.url;
+    if (url.isEmpty) return;
     try {
-      await widget.audioService.play(widget.result.url);
+      await widget.audioService.play(url);
     } catch (_) {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
@@ -315,23 +624,47 @@ class _ResultCardState extends State<_ResultCard> {
   }
 
   Future<void> _downloadAndShare() async {
-    if (widget.result.url.isEmpty) return;
+    final url = widget.result.url;
+    if (url.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
     setState(() => _downloading = true);
 
     try {
       final dir = await getTemporaryDirectory();
       final ext = widget.result.outputFormat ?? 'mp3';
-      final fileName = '${_title.replaceAll(RegExp(r'[^\w\u4e00-\u9fff]'), '_')}.$ext';
+      final safeName =
+          _label(l10n).replaceAll(RegExp('[^\\w\u4e00-\u9fff]'), '_');
+      final fileName = '$safeName.$ext';
       final savePath = '${dir.path}/$fileName';
 
-      await Dio().download(widget.result.url, savePath);
+      debugPrint('[Share] 开始下载: $url -> $savePath');
+
+      await Dio().download(
+        url,
+        savePath,
+        options: Options(
+          receiveTimeout: const Duration(seconds: 60),
+          followRedirects: true,
+          maxRedirects: 5,
+        ),
+      );
+
+      debugPrint('[Share] 下载完成, 准备分享');
 
       if (!mounted) return;
 
-      // 使用系统分享
-      await Share.shareXFiles([XFile(savePath)]);
-    } catch (_) {
+      // iPad 上必须提供 sharePositionOrigin，否则会报 PlatformException
+      final box = context.findRenderObject() as RenderBox?;
+      final origin = box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null;
+
+      await Share.shareXFiles(
+        [XFile(savePath)],
+        sharePositionOrigin: origin,
+      );
+    } catch (e) {
+      debugPrint('[Share] 下载/分享失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.downloadFailed)),
@@ -345,202 +678,212 @@ class _ResultCardState extends State<_ResultCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
     final url = widget.result.url;
     final hasUrl = url.isNotEmpty;
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ─── 标题行 ───
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _title,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        children: [
+          // ─── 顶部行：播放 | 名称 | 分享 | 删除 ───
+          Row(
+            children: [
+              // 播放/暂停按钮
+              if (hasUrl)
+                StreamBuilder<PlayerState>(
+                  stream: widget.audioService.playerStateStream,
+                  builder: (context, snapshot) {
+                    final isThis = widget.audioService.currentUrl == url;
+                    final playing =
+                        isThis && (snapshot.data?.playing ?? false);
+                    return GestureDetector(
+                      onTap: () {
+                        if (playing) {
+                          widget.audioService.pause();
+                        } else if (isThis) {
+                          widget.audioService.resume();
+                        } else {
+                          _playAudio();
+                        }
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          playing ? Icons.pause : Icons.play_arrow,
+                          size: 20,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    widget.result.displayLabel.isNotEmpty
-                        ? widget.result.displayLabel
-                        : widget.result.stemType,
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
 
-            if (_dateStr.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                _dateStr,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              const SizedBox(width: 10),
+
+              // 轨道名称
+              Expanded(
+                child: Text(
+                  _label(AppLocalizations.of(context)!),
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+
+              // 分享按钮
+              if (hasUrl)
+                _downloading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        onPressed: _downloadAndShare,
+                        icon: Icon(Icons.share_outlined,
+                            size: 22,
+                            color: theme.colorScheme.primary),
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
+                        tooltip: AppLocalizations.of(context)!.share,
+                      ),
+
+              // 删除按钮
+              IconButton(
+                onPressed: () async {
+                  final l10n = AppLocalizations.of(context)!;
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(l10n.historyDelete),
+                      content: Text(l10n.historyDeleteConfirm),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(l10n.cancel),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(l10n.confirm,
+                              style: const TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    widget.onDeleteItem();
+                  }
+                },
+                icon: Icon(Icons.delete_outline,
+                    size: 22,
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.4)),
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 36, minHeight: 36),
+                tooltip: AppLocalizations.of(context)!.historyDelete,
+              ),
             ],
+          ),
 
-            // ─── 播放器区域（仅当前播放项展示） ───
-            if (hasUrl)
-              StreamBuilder<PlayerState>(
-                stream: widget.audioService.playerStateStream,
-                builder: (context, snapshot) {
-                  final isThisPlaying =
-                      widget.audioService.currentUrl == url;
-                  if (!isThisPlaying) return const SizedBox.shrink();
+          // ─── 波形进度条 + 时间（始终显示） ───
+          if (hasUrl)
+            StreamBuilder<PlayerState>(
+              stream: widget.audioService.playerStateStream,
+              builder: (context, _) {
+                final isThis = widget.audioService.currentUrl == url;
+                return StreamBuilder<Duration>(
+                  stream: widget.audioService.positionStream,
+                  builder: (context, posSnap) {
+                    final position =
+                        isThis ? (posSnap.data ?? Duration.zero) : Duration.zero;
+                    final total = isThis
+                        ? (widget.audioService.duration ?? Duration.zero)
+                        : Duration.zero;
+                    final progress = total.inMilliseconds > 0
+                        ? position.inMilliseconds / total.inMilliseconds
+                        : 0.0;
 
-                  final playing =
-                      snapshot.data?.playing ?? false;
-
-                  return Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      StreamBuilder<Duration>(
-                        stream: widget.audioService.positionStream,
-                        builder: (context, posSnap) {
-                          final position = posSnap.data ?? Duration.zero;
-                          final total =
-                              widget.audioService.duration ?? Duration.zero;
-                          final progress = total.inMilliseconds > 0
-                              ? position.inMilliseconds /
-                                  total.inMilliseconds
-                              : 0.0;
-                          return Column(
-                            children: [
-                              SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  trackHeight: 3,
-                                  thumbShape: const RoundSliderThumbShape(
-                                      enabledThumbRadius: 6),
-                                ),
-                                child: Slider(
-                                  value: progress.clamp(0.0, 1.0),
-                                  onChanged: (v) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // 波形可视化
+                          WaveformBar(
+                            url: url,
+                            isActive: isThis,
+                            progress: progress,
+                            currentTimeText: isThis ? _fmt(position) : null,
+                            height: 40,
+                            onSeek: isThis
+                                ? (v) {
                                     if (total.inMilliseconds > 0) {
                                       widget.audioService.seek(Duration(
                                           milliseconds:
                                               (v * total.inMilliseconds)
                                                   .toInt()));
                                     }
-                                  },
+                                  }
+                                : null,
+                          ),
+                          const SizedBox(height: 4),
+                          // 时间标签
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _fmt(position),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                                  fontSize: 11,
                                 ),
                               ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(_formatDuration(position),
-                                        style: theme.textTheme.bodySmall),
-                                    Text(_formatDuration(total),
-                                        style: theme.textTheme.bodySmall),
-                                  ],
+                              Text(
+                                total.inMilliseconds > 0 ? _fmt(total) : '--:--',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
-                          );
-                        },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              playing
-                                  ? Icons.pause_circle_filled
-                                  : Icons.play_circle_filled,
-                              size: 36,
-                              color: theme.colorScheme.primary,
-                            ),
-                            onPressed: () {
-                              if (playing) {
-                                widget.audioService.pause();
-                              } else {
-                                widget.audioService.resume();
-                              }
-                            },
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.stop_circle_outlined,
-                                size: 28,
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.5)),
-                            onPressed: () => widget.audioService.stop(),
                           ),
                         ],
                       ),
-                    ],
-                  );
-                },
-              ),
-
-            // ─── 操作按钮 ───
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (hasUrl)
-                  TextButton.icon(
-                    onPressed: _playAudio,
-                    icon: const Icon(Icons.play_circle_outline, size: 18),
-                    label: Text(l10n.historyPlay,
-                        style: const TextStyle(fontSize: 12)),
-                  ),
-                if (hasUrl)
-                  _downloading
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : TextButton.icon(
-                          onPressed: _downloadAndShare,
-                          icon: const Icon(Icons.download_outlined, size: 18),
-                          label: Text(l10n.historyDownload,
-                              style: const TextStyle(fontSize: 12)),
-                        ),
-                TextButton.icon(
-                  onPressed: widget.onDelete,
-                  icon:
-                      Icon(Icons.delete_outline, size: 18, color: Colors.grey),
-                  label: Text(l10n.historyDelete,
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ),
-              ],
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  String _formatDuration(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString();
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }

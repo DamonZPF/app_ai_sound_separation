@@ -163,6 +163,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyDownload => 'Download';
 
   @override
+  String historyTrackCount(Object count) {
+    return '$count tracks';
+  }
+
+  @override
   String get historyDelete => 'Delete';
 
   @override
@@ -235,4 +240,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get share => 'Share';
+
+  @override
+  String get stemLabelVocals => 'Vocals';
+
+  @override
+  String get stemLabelVoiceClean => 'Clean Voice';
+
+  @override
+  String get stemLabelDrum => 'Drums';
+
+  @override
+  String get stemLabelBass => 'Bass';
+
+  @override
+  String get stemLabelAcousticGuitar => 'Acoustic Guitar';
+
+  @override
+  String get stemLabelElectricGuitar => 'Electric Guitar';
+
+  @override
+  String get stemLabelPiano => 'Piano';
+
+  @override
+  String get stemLabelSynthesizer => 'Synthesizer';
+
+  @override
+  String get stemLabelStrings => 'Strings';
+
+  @override
+  String get stemLabelWind => 'Wind';
+
+  @override
+  String get stemLabelAccompaniment => 'Accompaniment';
+
+  @override
+  String get stemLabelOther => 'Other';
 }

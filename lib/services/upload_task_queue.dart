@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/stem_task.dart';
 import 'stem_api_service.dart';
+import 'pending_task_store.dart';
 
 class UploadTaskQueue {
   UploadTaskQueue._();
@@ -154,6 +155,20 @@ class UploadTaskQueue {
 
       debugPrint('[TaskQueue] 上传完成, stemTaskId: $stemTaskId, 开始轮询...');
 
+      // 持久化到 PendingTaskStore（App 重启后可恢复轮询）
+      final currentTask = tasks.firstWhere(
+        (t) => t.stemTaskId == localId,
+        orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: 'unknown', createdAt: ''),
+      );
+      if (currentTask.stemTaskId.isNotEmpty) {
+        await PendingTaskStore.instance.addTask(PendingTask(
+          stemTaskId: stemTaskId,
+          trackTitle: currentTask.trackTitle,
+          stem: currentTask.stem,
+          createdAt: currentTask.createdAt,
+        ));
+      }
+
       // 更新状态为 processing，记录服务端 taskId
       _updateTask(localId, (t) => StemTask(
             stemTaskId: t.stemTaskId,
@@ -173,11 +188,15 @@ class UploadTaskQueue {
 
       if (result == null) {
         _markFailed(localId, '处理超时');
+        // 超时也从持久化层移除
+        await PendingTaskStore.instance.removeTask(stemTaskId);
         return;
       }
 
       if (result.isFailed) {
         _markFailed(localId, result.errorMessage ?? '处理失败');
+        // 失败也从持久化层移除
+        await PendingTaskStore.instance.removeTask(stemTaskId);
         return;
       }
 
@@ -193,6 +212,8 @@ class UploadTaskQueue {
             results: result.results,
           ));
 
+      // 完成后从持久化层移除
+      await PendingTaskStore.instance.removeTask(stemTaskId);
       debugPrint('[TaskQueue] ✅ 任务完成: $localId');
     } catch (e) {
       debugPrint('[TaskQueue] ❌ 处理失败: $localId, $e');

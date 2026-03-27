@@ -50,6 +50,7 @@
   "historyPlay": "播放",
   "historyPause": "暂停",
   "historyDownload": "下载",
+  "historyTrackCount": "{count} 条分轨",
   "historyDelete": "删除",
   "historyDeleteConfirm": "确定要删除这条记录吗？",
   "historyRetry": "重试",
@@ -73,5 +74,17 @@
   "downloadFailed": "下载失败",
   "downloadSuccess": "下载完成",
   "playFailed": "播放失败",
-  "share": "分享"
+  "share": "分享",
+  "stemLabelVocals": "人声",
+  "stemLabelVoiceClean": "去噪人声",
+  "stemLabelDrum": "鼓点",
+  "stemLabelBass": "贝斯",
+  "stemLabelAcousticGuitar": "原声吉他",
+  "stemLabelElectricGuitar": "电吉他",
+  "stemLabelPiano": "钢琴",
+  "stemLabelSynthesizer": "合成器",
+  "stemLabelStrings": "弦乐",
+  "stemLabelWind": "管乐",
+  "stemLabelAccompaniment": "伴奏",
+  "stemLabelOther": "其他"
 }

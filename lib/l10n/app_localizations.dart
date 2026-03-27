@@ -398,6 +398,12 @@ abstract class AppLocalizations {
   /// **'下载'**
   String get historyDownload;
 
+  /// No description provided for @historyTrackCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条分轨'**
+  String historyTrackCount(Object count);
+
   /// No description provided for @historyDelete.
   ///
   /// In zh, this message translates to:
@@ -541,6 +547,78 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'分享'**
   String get share;
+
+  /// No description provided for @stemLabelVocals.
+  ///
+  /// In zh, this message translates to:
+  /// **'人声'**
+  String get stemLabelVocals;
+
+  /// No description provided for @stemLabelVoiceClean.
+  ///
+  /// In zh, this message translates to:
+  /// **'去噪人声'**
+  String get stemLabelVoiceClean;
+
+  /// No description provided for @stemLabelDrum.
+  ///
+  /// In zh, this message translates to:
+  /// **'鼓点'**
+  String get stemLabelDrum;
+
+  /// No description provided for @stemLabelBass.
+  ///
+  /// In zh, this message translates to:
+  /// **'贝斯'**
+  String get stemLabelBass;
+
+  /// No description provided for @stemLabelAcousticGuitar.
+  ///
+  /// In zh, this message translates to:
+  /// **'原声吉他'**
+  String get stemLabelAcousticGuitar;
+
+  /// No description provided for @stemLabelElectricGuitar.
+  ///
+  /// In zh, this message translates to:
+  /// **'电吉他'**
+  String get stemLabelElectricGuitar;
+
+  /// No description provided for @stemLabelPiano.
+  ///
+  /// In zh, this message translates to:
+  /// **'钢琴'**
+  String get stemLabelPiano;
+
+  /// No description provided for @stemLabelSynthesizer.
+  ///
+  /// In zh, this message translates to:
+  /// **'合成器'**
+  String get stemLabelSynthesizer;
+
+  /// No description provided for @stemLabelStrings.
+  ///
+  /// In zh, this message translates to:
+  /// **'弦乐'**
+  String get stemLabelStrings;
+
+  /// No description provided for @stemLabelWind.
+  ///
+  /// In zh, this message translates to:
+  /// **'管乐'**
+  String get stemLabelWind;
+
+  /// No description provided for @stemLabelAccompaniment.
+  ///
+  /// In zh, this message translates to:
+  /// **'伴奏'**
+  String get stemLabelAccompaniment;
+
+  /// No description provided for @stemLabelOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get stemLabelOther;
 }
 
 class _AppLocalizationsDelegate

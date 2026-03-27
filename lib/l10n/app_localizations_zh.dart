@@ -159,6 +159,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyDownload => '下载';
 
   @override
+  String historyTrackCount(Object count) {
+    return '$count 条分轨';
+  }
+
+  @override
   String get historyDelete => '删除';
 
   @override
@@ -230,4 +235,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get share => '分享';
+
+  @override
+  String get stemLabelVocals => '人声';
+
+  @override
+  String get stemLabelVoiceClean => '去噪人声';
+
+  @override
+  String get stemLabelDrum => '鼓点';
+
+  @override
+  String get stemLabelBass => '贝斯';
+
+  @override
+  String get stemLabelAcousticGuitar => '原声吉他';
+
+  @override
+  String get stemLabelElectricGuitar => '电吉他';
+
+  @override
+  String get stemLabelPiano => '钢琴';
+
+  @override
+  String get stemLabelSynthesizer => '合成器';
+
+  @override
+  String get stemLabelStrings => '弦乐';
+
+  @override
+  String get stemLabelWind => '管乐';
+
+  @override
+  String get stemLabelAccompaniment => '伴奏';
+
+  @override
+  String get stemLabelOther => '其他';
 }

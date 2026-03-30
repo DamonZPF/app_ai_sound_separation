@@ -87,5 +87,16 @@
   "stemLabelStrings": "弦乐",
   "stemLabelWind": "管乐",
   "stemLabelAccompaniment": "伴奏",
-  "stemLabelOther": "其他"
+  "stemLabelOther": "其他",
+  "uploadSourceWifi": "WiFi 传输",
+  "uploadSourceWifiDesc": "通过局域网从电脑浏览器上传文件",
+  "wifiTransferTitle": "WiFi 传输",
+  "wifiTransferStep1": "1. 确保手机和电脑连接同一 WiFi",
+  "wifiTransferStep2": "2. 在电脑浏览器中打开下方地址",
+  "wifiTransferStep3": "3. 在网页中拖拽或选择文件上传",
+  "wifiTransferStarted": "WiFi 传输服务已启动",
+  "wifiTransferStopped": "WiFi 传输服务已停止",
+  "wifiTransferReceived": "已收到文件，正在处理...",
+  "wifiTransferNoWifi": "未连接 WiFi，无法启动传输服务",
+  "wifiTransferClose": "关闭传输"
 }

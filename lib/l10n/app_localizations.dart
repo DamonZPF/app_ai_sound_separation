@@ -625,6 +625,72 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'其他'**
   String get stemLabelOther;
+
+  /// No description provided for @uploadSourceWifi.
+  ///
+  /// In zh, this message translates to:
+  /// **'WiFi 传输'**
+  String get uploadSourceWifi;
+
+  /// No description provided for @uploadSourceWifiDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'通过局域网从电脑浏览器上传文件'**
+  String get uploadSourceWifiDesc;
+
+  /// No description provided for @wifiTransferTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'WiFi 传输'**
+  String get wifiTransferTitle;
+
+  /// No description provided for @wifiTransferStep1.
+  ///
+  /// In zh, this message translates to:
+  /// **'1. 确保手机和电脑连接同一 WiFi'**
+  String get wifiTransferStep1;
+
+  /// No description provided for @wifiTransferStep2.
+  ///
+  /// In zh, this message translates to:
+  /// **'2. 在电脑浏览器中打开下方地址'**
+  String get wifiTransferStep2;
+
+  /// No description provided for @wifiTransferStep3.
+  ///
+  /// In zh, this message translates to:
+  /// **'3. 在网页中拖拽或选择文件上传'**
+  String get wifiTransferStep3;
+
+  /// No description provided for @wifiTransferStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'WiFi 传输服务已启动'**
+  String get wifiTransferStarted;
+
+  /// No description provided for @wifiTransferStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'WiFi 传输服务已停止'**
+  String get wifiTransferStopped;
+
+  /// No description provided for @wifiTransferReceived.
+  ///
+  /// In zh, this message translates to:
+  /// **'已收到文件，正在处理...'**
+  String get wifiTransferReceived;
+
+  /// No description provided for @wifiTransferNoWifi.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接 WiFi，无法启动传输服务'**
+  String get wifiTransferNoWifi;
+
+  /// No description provided for @wifiTransferClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭传输'**
+  String get wifiTransferClose;
 }
 
 class _AppLocalizationsDelegate

@@ -87,5 +87,16 @@
   "stemLabelStrings": "Strings",
   "stemLabelWind": "Wind",
   "stemLabelAccompaniment": "Accompaniment",
-  "stemLabelOther": "Other"
+  "stemLabelOther": "Other",
+  "uploadSourceWifi": "WiFi Transfer",
+  "uploadSourceWifiDesc": "Upload files from computer browser via LAN",
+  "wifiTransferTitle": "WiFi Transfer",
+  "wifiTransferStep1": "1. Connect phone and computer to the same WiFi",
+  "wifiTransferStep2": "2. Open the address below in your computer browser",
+  "wifiTransferStep3": "3. Drag or select files to upload on the webpage",
+  "wifiTransferStarted": "WiFi transfer service started",
+  "wifiTransferStopped": "WiFi transfer service stopped",
+  "wifiTransferReceived": "File received, processing...",
+  "wifiTransferNoWifi": "Not connected to WiFi",
+  "wifiTransferClose": "Stop Transfer"
 }

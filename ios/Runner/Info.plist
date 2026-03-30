@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>允许同一WiFi下的设备通过浏览器上传文件到本App</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>需要访问媒体库以选取音频进行分离</string>
 	<key>NSMicrophoneUsageDescription</key>

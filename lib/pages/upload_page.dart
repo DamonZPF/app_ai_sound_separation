@@ -1,11 +1,12 @@
-// 上传页面 — 四种来源选择入口
-// 对应截图设计：iTunes / 相机胶卷 / 文件 / 从 URL 导入
+// 上传页面 — 五种来源选择入口
+// 对应截图设计：iTunes / 相机胶卷 / 文件 / 从 URL 导入 / WiFi 传输
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import '../l10n/app_localizations.dart';
 import '../services/upload_task_queue.dart';
+import '../services/lan_upload_service.dart';
 
 class UploadPage extends StatefulWidget {
   final String stem;
@@ -160,6 +161,21 @@ class _UploadPageState extends State<UploadPage> {
     _goToHistory();
   }
 
+  // ─── 来源 5: WiFi 传输 ───
+  void _openWifiTransfer() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _WifiTransferPage(
+          stem: widget.stem,
+          onFileReceived: (filePath, fileName) {
+            _enqueueFile(filePath, fileName);
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -170,7 +186,7 @@ class _UploadPageState extends State<UploadPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           children: [
-            // ===== 四个来源卡片 =====
+            // ===== 五个来源卡片 =====
             Expanded(
               child: ListView(
                 children: [
@@ -208,6 +224,15 @@ class _UploadPageState extends State<UploadPage> {
                     title: l10n.uploadSourceUrl,
                     subtitle: l10n.uploadSourceUrlDesc,
                     onTap: _isPicking ? null : _importFromUrl,
+                  ),
+                  const SizedBox(height: 12),
+                  _SourceCard(
+                    icon: Icons.wifi,
+                    iconColor: Colors.white,
+                    iconBgColor: Colors.teal.shade700,
+                    title: l10n.uploadSourceWifi,
+                    subtitle: l10n.uploadSourceWifiDesc,
+                    onTap: _openWifiTransfer,
                   ),
                 ],
               ),
@@ -297,3 +322,325 @@ class _SourceCard extends StatelessWidget {
   }
 }
 
+// ──────────────────────────────────────────────
+// WiFi 传输引导页面（全屏 Modal）
+// ──────────────────────────────────────────────
+
+class _WifiTransferPage extends StatefulWidget {
+  final String stem;
+  final void Function(String filePath, String fileName) onFileReceived;
+
+  const _WifiTransferPage({
+    required this.stem,
+    required this.onFileReceived,
+  });
+
+  @override
+  State<_WifiTransferPage> createState() => _WifiTransferPageState();
+}
+
+class _WifiTransferPageState extends State<_WifiTransferPage> {
+  final _lanService = LanUploadService.instance;
+  bool _starting = false;
+  int _receivedCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startServer();
+  }
+
+  @override
+  void dispose() {
+    _lanService.onFileReceived = null;
+    _lanService.stop();
+    super.dispose();
+  }
+
+  Future<void> _startServer() async {
+    setState(() => _starting = true);
+
+    _lanService.onFileReceived = (filePath, fileName) {
+      if (!mounted) return;
+      setState(() => _receivedCount++);
+      widget.onFileReceived(filePath, fileName);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📥 $fileName'),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    };
+
+    final ok = await _lanService.start();
+    if (mounted) {
+      setState(() => _starting = false);
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.wifiTransferNoWifi),
+            backgroundColor: Colors.red,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.wifiTransferTitle),
+        actions: [
+          if (_receivedCount > 0)
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.wifiTransferClose),
+            ),
+        ],
+      ),
+      body: _starting
+          ? const Center(child: CircularProgressIndicator())
+          : ValueListenableBuilder<String?>(
+              valueListenable: _lanService.serverUrl,
+              builder: (context, url, _) {
+                if (url == null) {
+                  return Center(child: Text(l10n.wifiTransferNoWifi));
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ─── WiFi 图标动画 ───
+                      Center(
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.teal.shade400,
+                                Colors.teal.shade800,
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.teal.withValues(alpha: 0.3),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.wifi,
+                            size: 48,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // ─── 步骤引导 ───
+                      _StepItem(
+                        number: '1',
+                        text: l10n.wifiTransferStep1,
+                        icon: Icons.wifi_find,
+                      ),
+                      const SizedBox(height: 16),
+                      _StepItem(
+                        number: '2',
+                        text: l10n.wifiTransferStep2,
+                        icon: Icons.computer,
+                      ),
+                      const SizedBox(height: 16),
+                      _StepItem(
+                        number: '3',
+                        text: l10n.wifiTransferStep3,
+                        icon: Icons.upload_file,
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // ─── URL 地址卡片 ───
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.teal.shade900.withValues(alpha: 0.6),
+                              Colors.teal.shade700.withValues(alpha: 0.3),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.teal.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              '在电脑浏览器中输入',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SelectableText(
+                              url,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: url));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('已复制到剪贴板'),
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy, size: 18),
+                              label: const Text('复制地址'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(
+                                  color: Colors.white70,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ─── 已接收文件计数 ───
+                      if (_receivedCount > 0)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade900.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle,
+                                  color: Colors.green.shade400, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                '已接收 $_receivedCount 个文件',
+                                style: TextStyle(
+                                  color: Colors.green.shade300,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 32),
+
+                      // ─── 停止按钮 ───
+                      SizedBox(
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            _lanService.stop();
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.stop_circle_outlined),
+                          label: Text(l10n.wifiTransferClose),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                            side: BorderSide(
+                              color: theme.colorScheme.error.withValues(alpha: 0.5),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+/// 步骤引导项
+class _StepItem extends StatelessWidget {
+  final String number;
+  final String text;
+  final IconData icon;
+
+  const _StepItem({
+    required this.number,
+    required this.text,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.teal.withValues(alpha: 0.15),
+            ),
+            child: Icon(icon, size: 18, color: Colors.teal.shade300),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

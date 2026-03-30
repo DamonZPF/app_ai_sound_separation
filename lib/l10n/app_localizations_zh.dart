@@ -274,4 +274,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stemLabelOther => '其他';
+
+  @override
+  String get uploadSourceWifi => 'WiFi 传输';
+
+  @override
+  String get uploadSourceWifiDesc => '通过局域网从电脑浏览器上传文件';
+
+  @override
+  String get wifiTransferTitle => 'WiFi 传输';
+
+  @override
+  String get wifiTransferStep1 => '1. 确保手机和电脑连接同一 WiFi';
+
+  @override
+  String get wifiTransferStep2 => '2. 在电脑浏览器中打开下方地址';
+
+  @override
+  String get wifiTransferStep3 => '3. 在网页中拖拽或选择文件上传';
+
+  @override
+  String get wifiTransferStarted => 'WiFi 传输服务已启动';
+
+  @override
+  String get wifiTransferStopped => 'WiFi 传输服务已停止';
+
+  @override
+  String get wifiTransferReceived => '已收到文件，正在处理...';
+
+  @override
+  String get wifiTransferNoWifi => '未连接 WiFi，无法启动传输服务';
+
+  @override
+  String get wifiTransferClose => '关闭传输';
 }

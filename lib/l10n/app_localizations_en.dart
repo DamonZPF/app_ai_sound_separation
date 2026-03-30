@@ -279,4 +279,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stemLabelOther => 'Other';
+
+  @override
+  String get uploadSourceWifi => 'WiFi Transfer';
+
+  @override
+  String get uploadSourceWifiDesc =>
+      'Upload files from computer browser via LAN';
+
+  @override
+  String get wifiTransferTitle => 'WiFi Transfer';
+
+  @override
+  String get wifiTransferStep1 =>
+      '1. Connect phone and computer to the same WiFi';
+
+  @override
+  String get wifiTransferStep2 =>
+      '2. Open the address below in your computer browser';
+
+  @override
+  String get wifiTransferStep3 =>
+      '3. Drag or select files to upload on the webpage';
+
+  @override
+  String get wifiTransferStarted => 'WiFi transfer service started';
+
+  @override
+  String get wifiTransferStopped => 'WiFi transfer service stopped';
+
+  @override
+  String get wifiTransferReceived => 'File received, processing...';
+
+  @override
+  String get wifiTransferNoWifi => 'Not connected to WiFi';
+
+  @override
+  String get wifiTransferClose => 'Stop Transfer';
 }

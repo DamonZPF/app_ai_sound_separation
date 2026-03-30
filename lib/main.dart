@@ -6,6 +6,8 @@ import 'pages/history_page.dart';
 import 'pages/profile_page.dart';
 import 'services/supabase_service.dart';
 import 'services/pending_task_store.dart';
+import 'services/background_upload_channel.dart';
+import 'services/upload_task_queue.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
@@ -22,6 +24,12 @@ void main() async {
 
   // 4. 初始化待处理任务存储（从 SharedPreferences 恢复）
   await PendingTaskStore.instance.init();
+
+  // 5. 初始化后台上传通道（监听 iOS 原生上传事件）
+  BackgroundUploadChannel.instance.init();
+
+  // 6. 恢复上传任务队列（从 SharedPreferences 恢复）
+  await UploadTaskQueue.instance.init();
 
   runApp(const AISoundApp());
 }

@@ -422,6 +422,12 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get historyRetry;
 
+  /// No description provided for @historyAllLoaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已全部加载'**
+  String get historyAllLoaded;
+
   /// No description provided for @mineTitle.
   ///
   /// In zh, this message translates to:

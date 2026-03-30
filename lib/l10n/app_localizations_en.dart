@@ -178,6 +178,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyRetry => 'Retry';
 
   @override
+  String get historyAllLoaded => 'All loaded';
+
+  @override
   String get mineTitle => 'Me';
 
   @override

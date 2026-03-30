@@ -72,8 +72,21 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
   final _audio = AudioPlayerService.instance;
   final _queue = UploadTaskQueue.instance;
   final _pendingStore = PendingTaskStore.instance;
+
   List<_HistoryGroup> _groups = [];
-  bool _loading = true;
+  bool _loading = false;
+
+  /// 分页状态
+  int _currentPage = 1;
+  static const int _pageSize = 20;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+
+  /// 所有已加载的原始结果（用于分组）
+  List<StemResultItem> _allResults = [];
+
+  /// 滚动控制器
+  final ScrollController _scrollController = ScrollController();
 
   /// 轮询定时器
   Timer? _pollTimer;
@@ -85,41 +98,79 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scrollController.addListener(_onScroll);
+    _queue.tasksNotifier.addListener(_onQueueChanged);
     _loadHistory();
-    _startPolling();
+    _startPollingIfNeeded();
   }
 
   @override
   void dispose() {
     _stopPolling();
+    _queue.tasksNotifier.removeListener(_onQueueChanged);
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _audio.stop();
     super.dispose();
+  }
+
+  /// 监听上传队列变化：有任务完成时刷新远程历史
+  final Set<String> _seenCompletedIds = {};
+
+  void _onQueueChanged() {
+    final tasks = _queue.tasks;
+    bool hasNewCompletion = false;
+    for (final t in tasks) {
+      if (t.status == 'completed' && !_seenCompletedIds.contains(t.stemTaskId)) {
+        _seenCompletedIds.add(t.stemTaskId);
+        hasNewCompletion = true;
+      }
+    }
+    if (hasNewCompletion && mounted) {
+      debugPrint('[HistoryPage] 🔄 检测到队列任务完成，刷新历史');
+      _loadHistory(silent: true);
+    }
+  }
+
+  /// 监听滚动到底部，加载下一页
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_loadingMore &&
+        _hasMore &&
+        !_loading) {
+      _loadMore();
+    }
   }
 
   /// App 前后台切换时控制轮询
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _startPolling();
-      _loadHistory(); // 回到前台时也刷新一次历史
+      _startPollingIfNeeded();
+      _loadHistory(silent: true); // 回到前台时静默刷新，不显示 loading
     } else if (state == AppLifecycleState.paused) {
       _stopPolling();
     }
   }
 
-  void _startPolling() {
+  /// 仅在有待处理任务时启动轮询
+  void _startPollingIfNeeded() {
+    if (_pendingStore.tasks.isEmpty) {
+      debugPrint('[HistoryPage] 📭 无待处理任务，跳过轮询');
+      return;
+    }
     _stopPolling();
-    // 立刻执行一次
     _pollPendingTasks();
-    // 每 5 秒轮询
     _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _pollPendingTasks();
     });
-    debugPrint('[HistoryPage] ✅ 轮询已启动');
+    debugPrint('[HistoryPage] ✅ 轮询已启动 (${_pendingStore.tasks.length} 个待处理)');
   }
 
   void _stopPolling() {
+    if (_pollTimer == null) return;
     _pollTimer?.cancel();
     _pollTimer = null;
     debugPrint('[HistoryPage] ⏹ 轮询已停止');
@@ -184,14 +235,39 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
     return map.values.toList();
   }
 
-  Future<void> _loadHistory() async {
-    if (mounted) setState(() => _loading = true);
-    final results = await _stemApi.getHistory();
+  /// 加载历史记录（首次加载 / 下拉刷新 / 静默刷新）
+  Future<void> _loadHistory({bool silent = false}) async {
+    _currentPage = 1;
+    final results = await _stemApi.getHistory(page: 1, pageSize: _pageSize);
+
     if (mounted) {
       setState(() {
+        _allResults = results;
         _groups = _groupResults(results);
-        _loading = false;
+        _hasMore = results.length >= _pageSize;
       });
+    }
+  }
+
+  /// 加载更多（下一页）
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+
+    setState(() => _loadingMore = true);
+
+    final nextPage = _currentPage + 1;
+    final results = await _stemApi.getHistory(page: nextPage, pageSize: _pageSize);
+
+    if (mounted) {
+      setState(() {
+        _currentPage = nextPage;
+        _allResults.addAll(results);
+        _groups = _groupResults(_allResults);
+        _hasMore = results.length >= _pageSize;
+        _loadingMore = false;
+      });
+      debugPrint('[HistoryPage] 📄 加载第 $nextPage 页，获取 ${results.length} 条，'
+          '总计 ${_allResults.length} 条，hasMore=$_hasMore');
     }
   }
 
@@ -202,6 +278,8 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
     }
     if (mounted) {
       setState(() {
+        _allResults.removeWhere(
+            (r) => group.items.any((gi) => gi.id == r.id));
         _groups.remove(group);
       });
     }
@@ -212,6 +290,7 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
     final ok = await _stemApi.deleteResult(item.id);
     if (!ok || !mounted) return;
     setState(() {
+      _allResults.removeWhere((r) => r.id == item.id);
       group.items.remove(item);
       if (group.items.isEmpty) {
         _groups.remove(group);
@@ -225,9 +304,7 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.historyTitle)),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      body: RefreshIndicator(
               onRefresh: _loadHistory,
               child: ValueListenableBuilder<List<StemTask>>(
                 valueListenable: _queue.tasksNotifier,
@@ -238,13 +315,22 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
                   final totalCount = activeTasks.length + _groups.length;
 
                   if (totalCount == 0) {
-                    return _buildEmpty(context);
+                    return ListView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [_buildEmpty(context)],
+                    );
                   }
 
+                  // +1 用于底部加载更多指示器
+                  final itemCount = totalCount + 1;
+
                   return ListView.separated(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
-                    itemCount: totalCount,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemCount: itemCount,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       // 队列任务在前
                       if (i < activeTasks.length) {
@@ -256,7 +342,13 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
                               _queue.removeTask(activeTasks[i].stemTaskId),
                         );
                       }
-                      // 远程历史（分组卡片）在后
+
+                      // 底部加载指示器
+                      if (i >= activeTasks.length + _groups.length) {
+                        return _buildFooter(l10n);
+                      }
+
+                      // 远程历史（分组卡片）
                       final gi = i - activeTasks.length;
                       return _GroupedResultCard(
                         group: _groups[gi],
@@ -273,31 +365,64 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
     );
   }
 
+  /// 底部加载更多指示器 / 已全部加载提示
+  Widget _buildFooter(AppLocalizations l10n) {
+    if (_loadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    if (!_hasMore) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text(
+            '— ${l10n.historyAllLoaded} —',
+            style: TextStyle(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.35),
+              fontSize: 13,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
   Widget _buildEmpty(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    return ListView(
-      // 需要 ListView 以支持 RefreshIndicator
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-        Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.history,
-                  size: 64,
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-              const SizedBox(height: 16),
-              Text(l10n.historyEmpty,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.45),
-                  )),
-            ],
-          ),
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.6,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history,
+                size: 64,
+                color:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+            const SizedBox(height: 16),
+            Text(l10n.historyEmpty,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface
+                      .withValues(alpha: 0.45),
+                )),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

@@ -1,12 +1,14 @@
 // Stem API 服务
 // 对应原 stem-api.ts 的全部功能
-// Taro.request → Dio
+// 上传走 iOS 原生后台通道，轮询/查询仍用 Dio
 import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../config/env.dart';
 import '../models/stem_task.dart';
+import 'background_upload_channel.dart';
 import 'chunked_uploader.dart';
 import 'supabase_service.dart';
 
@@ -15,6 +17,8 @@ const int _chunkedThreshold = 10 * 1024 * 1024;
 
 class StemApiService {
   final Dio _dio = Dio();
+  final BackgroundUploadChannel _bgChannel = BackgroundUploadChannel.instance;
+  final Uuid _uuid = const Uuid();
 
   /// 通用 header
   Map<String, dynamic> _getHeaders() => {
@@ -68,7 +72,7 @@ class StemApiService {
     }
   }
 
-  /// 直接上传（小文件，< 10MB）
+  /// 直接上传（小文件，< 10MB）— 通过原生后台通道
   Future<String> _directUpload({
     required String filePath,
     required String fileName,
@@ -80,39 +84,27 @@ class StemApiService {
   }) async {
     onProgress?.call(5);
 
-    final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath, filename: fileName),
-      'user_id': userId,
-      'stem': stem,
-      'track_title': trackTitle,
-      'output_format': outputFormat,
-    });
+    final uploadId = _uuid.v4();
+    debugPrint('[StemAPI] 开始后台上传: $fileName (uploadId: $uploadId)');
 
-    final res = await _dio.post(
-      '${Env.stemApiUrl}/stem/separate_free',
-      data: formData,
-      options: Options(
-        headers: _getHeaders(),
-        sendTimeout: const Duration(seconds: 120),
-        receiveTimeout: const Duration(seconds: 120),
-      ),
-      onSendProgress: (sent, total) {
-        if (total > 0) {
-          final p = (sent / total * 45).floor();
-          onProgress?.call(p);
-        }
+    final stemTaskId = await _bgChannel.uploadFile(
+      filePath: filePath,
+      fileName: fileName,
+      uploadId: uploadId,
+      userId: userId,
+      stem: stem,
+      trackTitle: trackTitle,
+      outputFormat: outputFormat,
+      onProgress: (p) {
+        // 原生层进度 0~100 映射到 5~45
+        final mapped = 5 + (p * 0.4).floor();
+        onProgress?.call(mapped);
       },
     );
 
-    final data = res.data;
-    final stemTaskId = data['stem_task_id'] ?? data['task_id'] ?? '';
-    if (stemTaskId.toString().isEmpty) {
-      throw Exception('服务器未返回 stem_task_id');
-    }
-
     onProgress?.call(50);
-    debugPrint('[StemAPI] ✅ 直接上传成功, stemTaskId: $stemTaskId');
-    return stemTaskId.toString();
+    debugPrint('[StemAPI] ✅ 后台上传成功, stemTaskId: $stemTaskId');
+    return stemTaskId;
   }
 
   /// 分块上传（大文件，≥ 10MB）
@@ -255,20 +247,22 @@ class StemApiService {
   // GET /stem/free_results_all?user_id=xxx&page=1&page_size=50
   // ----------------------------------------------------------
 
-  /// 获取用户历史记录（分轨结果列表）
+  /// 获取用户历史记录（分轨结果列表）— 自动重试连接错误
   Future<List<StemResultItem>> getHistory({int page = 1, int pageSize = 50}) async {
     final userId = getCachedUserId() ?? '';
     if (userId.isEmpty) return [];
 
     try {
-      final res = await _dio.get(
-        '${Env.stemApiUrl}/stem/free_results_all',
-        queryParameters: {
-          'user_id': userId,
-          'page': page,
-          'page_size': pageSize,
-        },
-        options: Options(headers: _getHeaders()),
+      final res = await _requestWithRetry(
+        () => _dio.get(
+          '${Env.stemApiUrl}/stem/free_results_all',
+          queryParameters: {
+            'user_id': userId,
+            'page': page,
+            'page_size': pageSize,
+          },
+          options: Options(headers: _getHeaders()),
+        ),
       );
 
       final data = res.data;
@@ -282,6 +276,29 @@ class StemApiService {
       debugPrint('[StemAPI] getHistory failed: $e');
       return [];
     }
+  }
+
+  /// 通用重试包装器（仅对连接类错误重试）
+  Future<Response> _requestWithRetry(
+    Future<Response> Function() request, {
+    int maxRetries = 2,
+  }) async {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await request();
+      } on DioException catch (e) {
+        final isRetryable = e.type == DioExceptionType.connectionError ||
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout;
+
+        if (!isRetryable || attempt >= maxRetries) rethrow;
+
+        final waitMs = 1000 * (attempt + 1);
+        debugPrint('[StemAPI] ⏳ 连接失败，${waitMs}ms 后重试 (${attempt + 1}/$maxRetries)');
+        await Future.delayed(Duration(milliseconds: waitMs));
+      }
+    }
+    throw Exception('unreachable');
   }
 
   // ----------------------------------------------------------

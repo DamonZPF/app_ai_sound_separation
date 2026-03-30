@@ -30,8 +30,8 @@ class _UploadPageState extends State<UploadPage> {
   }
 
   // ─── 通用：加入队列后跳转历史页（非阻塞） ───
-  void _enqueueFile(String filePath, String fileName) {
-    final localId = _queue.addTask(
+  Future<void> _enqueueFile(String filePath, String fileName) async {
+    final localId = await _queue.addTask(
       filePath: filePath,
       fileName: fileName,
       stem: widget.stem,

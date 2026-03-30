@@ -54,6 +54,7 @@
   "historyDelete": "Delete",
   "historyDeleteConfirm": "Are you sure you want to delete this record?",
   "historyRetry": "Retry",
+  "historyAllLoaded": "All loaded",
   "mineTitle": "Me",
   "mineAnonymousUser": "Anonymous User",
   "mineUserId": "User ID",

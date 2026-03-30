@@ -54,6 +54,7 @@
   "historyDelete": "删除",
   "historyDeleteConfirm": "确定要删除这条记录吗？",
   "historyRetry": "重试",
+  "historyAllLoaded": "已全部加载",
   "mineTitle": "我的",
   "mineAnonymousUser": "匿名用户",
   "mineUserId": "用户ID",

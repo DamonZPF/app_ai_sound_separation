@@ -173,6 +173,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyRetry => '重试';
 
   @override
+  String get historyAllLoaded => '已全部加载';
+
+  @override
   String get mineTitle => '我的';
 
   @override

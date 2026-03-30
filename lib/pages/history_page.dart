@@ -554,8 +554,8 @@ class _QueueTaskCard extends StatelessWidget {
                     label: Text(l10n.historyRetry,
                         style: const TextStyle(fontSize: 12)),
                   ),
-                // 仅失败状态可删除，上传中/处理中禁止删除
-                if (isFailed)
+                // 上传中和失败可删除，处理中禁止删除
+                if (task.status != 'processing')
                 TextButton.icon(
                   onPressed: onRemove,
                   icon:

@@ -540,6 +540,8 @@ class _QueueTaskCard extends StatelessWidget {
                     label: Text(l10n.historyRetry,
                         style: const TextStyle(fontSize: 12)),
                   ),
+                // 仅失败状态可删除，上传中/处理中禁止删除
+                if (isFailed)
                 TextButton.icon(
                   onPressed: onRemove,
                   icon:
@@ -823,40 +825,45 @@ class _TrackRowState extends State<_TrackRow> {
             children: [
               // 播放/暂停按钮
               if (hasUrl)
-                StreamBuilder<PlayerState>(
-                  stream: widget.audioService.playerStateStream,
-                  builder: (context, snapshot) {
-                    final isThis = widget.audioService.currentUrl == url;
-                    final playing =
-                        isThis && (snapshot.data?.playing ?? false);
-                    return GestureDetector(
-                      onTap: () {
-                        if (playing) {
-                          widget.audioService.pause();
-                        } else if (isThis) {
-                          widget.audioService.resume();
-                        } else {
-                          _playAudio();
-                        }
-                      },
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.3),
-                            width: 1.5,
+              ValueListenableBuilder<String?>(
+                  valueListenable: widget.audioService.currentUrlNotifier,
+                  builder: (context, currentUrl, _) {
+                    return StreamBuilder<PlayerState>(
+                      stream: widget.audioService.playerStateStream,
+                      builder: (context, snapshot) {
+                        final isThis = currentUrl == url;
+                        final playing =
+                            isThis && (snapshot.data?.playing ?? false);
+                        return GestureDetector(
+                          onTap: () {
+                            if (playing) {
+                              widget.audioService.pause();
+                            } else if (isThis) {
+                              widget.audioService.resume();
+                            } else {
+                              _playAudio();
+                            }
+                          },
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              playing ? Icons.pause : Icons.play_arrow,
+                              size: 20,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
                           ),
-                        ),
-                        child: Icon(
-                          playing ? Icons.pause : Icons.play_arrow,
-                          size: 20,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.7),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -933,10 +940,13 @@ class _TrackRowState extends State<_TrackRow> {
 
           // ─── 波形进度条 + 时间（始终显示） ───
           if (hasUrl)
-            StreamBuilder<PlayerState>(
-              stream: widget.audioService.playerStateStream,
-              builder: (context, _) {
-                final isThis = widget.audioService.currentUrl == url;
+            ValueListenableBuilder<String?>(
+              valueListenable: widget.audioService.currentUrlNotifier,
+              builder: (context, currentUrl, _) {
+                return StreamBuilder<PlayerState>(
+                  stream: widget.audioService.playerStateStream,
+                  builder: (context, _) {
+                    final isThis = currentUrl == url;
                 return StreamBuilder<Duration>(
                   stream: widget.audioService.positionStream,
                   builder: (context, posSnap) {
@@ -1000,6 +1010,8 @@ class _TrackRowState extends State<_TrackRow> {
                     );
                   },
                 );
+              },
+            );
               },
             ),
         ],

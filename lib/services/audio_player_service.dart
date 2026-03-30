@@ -3,7 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerService {
-  AudioPlayerService._();
+  AudioPlayerService._() {
+    // 监听播放完成，重置状态
+    _player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        _currentUrl = null;
+        currentUrlNotifier.value = null;
+      }
+    });
+  }
   static final AudioPlayerService instance = AudioPlayerService._();
 
   final AudioPlayer _player = AudioPlayer();
@@ -11,6 +19,9 @@ class AudioPlayerService {
   /// 当前正在播放的 URL
   String? _currentUrl;
   String? get currentUrl => _currentUrl;
+
+  /// 用于 UI 响应式监听当前播放 URL 变化
+  final ValueNotifier<String?> currentUrlNotifier = ValueNotifier(null);
 
   /// 播放状态流
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
@@ -33,17 +44,23 @@ class AudioPlayerService {
         if (_player.playing) {
           await _player.pause();
         } else {
+          // 播放完成后再次点击同一首，从头开始
+          if (_player.processingState == ProcessingState.completed) {
+            await _player.seek(Duration.zero);
+          }
           await _player.play();
         }
         return;
       }
       // 播放新的
       _currentUrl = url;
+      currentUrlNotifier.value = url;
       await _player.setUrl(url);
       await _player.play();
     } catch (e) {
       debugPrint('[AudioPlayerService] play error: $e');
       _currentUrl = null;
+      currentUrlNotifier.value = null;
       rethrow;
     }
   }
@@ -67,6 +84,7 @@ class AudioPlayerService {
   Future<void> stop() async {
     await _player.stop();
     _currentUrl = null;
+    currentUrlNotifier.value = null;
   }
 
   /// 释放资源

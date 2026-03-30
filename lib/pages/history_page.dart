@@ -189,12 +189,26 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
       try {
         final data = await _stemApi.getTaskDetail(task.stemTaskId);
         final status = (data['status'] ?? '').toString();
+        final progress = data['progress'];
         debugPrint(
-            '[HistoryPage] 轮询 ${task.stemTaskId}: status=$status');
+            '[HistoryPage] 轮询 ${task.stemTaskId}: status=$status, progress=$progress');
+
+        // 同步进度到队列任务（补偿 Dart 后台暂停期间丢失的进度更新）
+        if (progress != null) {
+          final queueProgress = 50 + ((progress as num).toInt() * 0.5).floor();
+          _queue.updateProgressFromPoll(task.stemTaskId, queueProgress);
+        }
 
         if (status == 'completed' || status == 'failed' || status == 'error') {
           await _pendingStore.removeTask(task.stemTaskId);
           anyCompleted = true;
+
+          // 同步最终状态到队列
+          if (status == 'completed') {
+            _queue.markCompleted(task.stemTaskId);
+          } else {
+            _queue.markFailed(task.stemTaskId, data['error']?.toString() ?? '处理失败');
+          }
         }
       } catch (e) {
         debugPrint('[HistoryPage] 轮询异常: ${task.stemTaskId}, $e');

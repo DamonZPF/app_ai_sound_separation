@@ -220,6 +220,62 @@ class UploadTaskQueue {
   }
 
   // ──────────────────────────────────────────────
+  // 外部轮询同步接口（HistoryPage 轮询用）
+  // PendingTaskStore 中存的是服务端 stemTaskId，
+  // 而队列中用的是 localId，需要匹配
+  // ──────────────────────────────────────────────
+
+  /// 通过服务端 stemTaskId 查找队列中的 localId
+  String? _findLocalIdByServerTaskId(String serverTaskId) {
+    // processing 状态下 stemTaskId 还是 localId，
+    // 但 PendingTaskStore 中存的是服务端 id
+    // 需要遍历查找 uploadParams 或匹配规则
+    for (final t in tasks) {
+      if (t.status == 'processing' || t.status == 'uploading') {
+        return t.stemTaskId; // 目前只有一个 processing 任务
+      }
+    }
+    return null;
+  }
+
+  /// 外部轮询同步进度（补偿 Dart 后台暂停期间丢失的进度更新）
+  void updateProgressFromPoll(String serverTaskId, int progress) {
+    final localId = _findLocalIdByServerTaskId(serverTaskId);
+    if (localId != null) {
+      _updateProgress(localId, progress);
+    }
+  }
+
+  /// 外部标记任务完成
+  void markCompleted(String serverTaskId) {
+    final localId = _findLocalIdByServerTaskId(serverTaskId);
+    if (localId != null) {
+      _updateTask(localId, (t) => StemTask(
+            stemTaskId: t.stemTaskId,
+            trackTitle: t.trackTitle,
+            stem: t.stem,
+            status: 'completed',
+            createdAt: t.createdAt,
+            progress: 100,
+            uploadParams: t.uploadParams,
+          ));
+      _cleanupPersistedFile(
+          tasks.firstWhere((t) => t.stemTaskId == localId,
+              orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''))
+          .uploadParams?.filePath);
+      _persist();
+    }
+  }
+
+  /// 外部标记任务失败
+  void markFailed(String serverTaskId, String errorMessage) {
+    final localId = _findLocalIdByServerTaskId(serverTaskId);
+    if (localId != null) {
+      _markFailed(localId, errorMessage);
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // 内部：后台处理流程
   // ──────────────────────────────────────────────
 

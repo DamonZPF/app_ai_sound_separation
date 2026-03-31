@@ -140,7 +140,7 @@ class _ChunkedUploader {
         ).timeout(
           const Duration(seconds: 180),
           onTimeout: () {
-            throw TimeoutException('分块 $index 上传超时 (180s)', const Duration(seconds: 180));
+            throw TimeoutException('Chunk $index upload timeout (180s)', const Duration(seconds: 180));
           },
         );
 
@@ -221,7 +221,7 @@ class _ChunkedUploader {
         ).timeout(
           const Duration(seconds: 120),
           onTimeout: () {
-            throw TimeoutException('合并请求超时 (120s)', const Duration(seconds: 120));
+            throw TimeoutException('Merge request timeout (120s)', const Duration(seconds: 120));
           },
         );
 

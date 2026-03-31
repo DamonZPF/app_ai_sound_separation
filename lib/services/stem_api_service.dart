@@ -109,7 +109,7 @@ class StemApiService {
         ).timeout(
           const Duration(seconds: 300),
           onTimeout: () {
-            throw TimeoutException('小文件上传超时 (300s)', const Duration(seconds: 300));
+            throw TimeoutException('Upload timeout (300s)', const Duration(seconds: 300));
           },
         );
 
@@ -186,7 +186,7 @@ class StemApiService {
     final data = res.data;
     final stemTaskId = data['stem_task_id'] ?? data['task_id'] ?? '';
     if (stemTaskId.toString().isEmpty) {
-      throw Exception('服务器未返回 stem_task_id');
+      throw Exception('Server did not return stem_task_id');
     }
 
     debugPrint('[StemAPI] ✅ URL提交成功, stemTaskId: $stemTaskId');

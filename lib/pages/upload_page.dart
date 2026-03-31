@@ -169,11 +169,26 @@ class _UploadPageState extends State<UploadPage> {
         builder: (_) => _WifiTransferPage(
           stem: widget.stem,
           onFileReceived: (filePath, fileName) {
-            _enqueueFile(filePath, fileName);
+            // 先入队启动处理
+            _enqueueFileOnly(filePath, fileName);
+          },
+          onGoHistory: () {
+            // WiFi 页面关闭后，上传页也 pop 回首页历史标签
+            _goToHistory();
           },
         ),
       ),
     );
+  }
+
+  /// 仅入队不跳转（供 WiFi 传输使用）
+  Future<void> _enqueueFileOnly(String filePath, String fileName) async {
+    final localId = await _queue.addTask(
+      filePath: filePath,
+      fileName: fileName,
+      stem: widget.stem,
+    );
+    _queue.startProcessing(localId);
   }
 
   @override
@@ -329,10 +344,12 @@ class _SourceCard extends StatelessWidget {
 class _WifiTransferPage extends StatefulWidget {
   final String stem;
   final void Function(String filePath, String fileName) onFileReceived;
+  final VoidCallback onGoHistory;
 
   const _WifiTransferPage({
     required this.stem,
     required this.onFileReceived,
+    required this.onGoHistory,
   });
 
   @override
@@ -364,13 +381,9 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
       if (!mounted) return;
       setState(() => _receivedCount++);
       widget.onFileReceived(filePath, fileName);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('📥 $fileName'),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+
+      // 弹窗询问：继续传输还是开始分离
+      _showFileReceivedDialog(fileName);
     };
 
     final ok = await _lanService.start();
@@ -388,6 +401,42 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
     }
   }
 
+  /// 文件接收后弹窗：继续传输 or 开始分离
+  void _showFileReceivedDialog(String fileName) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+        title: Text(l10n.wifiTransferFileReceived),
+        content: Text(
+          l10n.wifiTransferFileReceivedMsg(fileName),
+          style: const TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.wifiTransferContinue),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.wifiTransferStartNow),
+          ),
+        ],
+      ),
+    ).then((startNow) {
+      if (startNow == true) {
+        // 关闭 WiFi 页面，跳转历史页
+        _lanService.onFileReceived = null;
+        _lanService.stop();
+        Navigator.pop(context);
+        widget.onGoHistory();
+      }
+      // startNow == false: 保持 LAN 服务，继续等待更多文件
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -399,8 +448,13 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
         actions: [
           if (_receivedCount > 0)
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(l10n.wifiTransferClose),
+              onPressed: () {
+                _lanService.onFileReceived = null;
+                _lanService.stop();
+                Navigator.pop(context);
+                widget.onGoHistory();
+              },
+              child: Text(l10n.wifiTransferStartNow),
             ),
         ],
       ),

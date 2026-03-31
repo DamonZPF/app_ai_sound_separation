@@ -4,7 +4,6 @@
 // 已改为通过 iOS 原生 BackgroundUploadChannel 实现后台上传
 // 支持细粒度进度回调：每个分块的字节进度汇总计算总进度
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'background_upload_channel.dart';
@@ -16,7 +15,7 @@ const int defaultChunkSize = 5 * 1024 * 1024;
 const int maxConcurrency = 5;
 
 /// 单个分块最大重试次数
-const int maxChunkRetries = 3;
+const int maxChunkRetries = 5;
 
 class ChunkedUploadOptions {
   final String filePath;
@@ -113,6 +112,7 @@ class _ChunkedUploader {
   }
 
   /// 上传单个分块（通过原生后台通道，含重试）
+  /// 每个分块独立重试，超时保护 120 秒
   Future<void> _uploadChunkWithRetry(int index) async {
     final chunkOffset = index * opts.chunkSize;
     final chunkLength = min(opts.chunkSize, opts.totalSize - chunkOffset);
@@ -121,6 +121,7 @@ class _ChunkedUploader {
       if (aborted) return;
 
       try {
+        // 添加超时保护：单个分块最多等待 120 秒
         await _bgChannel.uploadChunk(
           filePath: opts.filePath,
           uploadId: identifier,
@@ -135,6 +136,11 @@ class _ChunkedUploader {
             // 更新此分块的进度并计算总进度
             _chunkProgress[index] = p;
             _reportAggregateProgress();
+          },
+        ).timeout(
+          const Duration(seconds: 180),
+          onTimeout: () {
+            throw TimeoutException('分块 $index 上传超时 (180s)', const Duration(seconds: 180));
           },
         );
 
@@ -154,14 +160,17 @@ class _ChunkedUploader {
 
         if (attempt >= maxChunkRetries) rethrow;
 
-        final waitMs = min(2000 * pow(2, attempt - 1).toInt(), 10000);
-        debugPrint('[ChunkedUpload] ⏳ 等待 ${waitMs}ms 后重试分块 $index...');
+        // 指数退避：1s → 2s → 4s → 8s → 10s（上限）
+        final waitMs = min(1000 * pow(2, attempt - 1).toInt(), 10000);
+        debugPrint('[ChunkedUpload] ⏳ 等待 ${waitMs}ms 后重试分块 $index (第 $attempt 次失败)...');
         await Future.delayed(Duration(milliseconds: waitMs));
       }
     }
   }
 
   /// 并发控制器
+  /// 改进：单个分块失败不会立即 abort 其他分块
+  /// 只有当分块重试全部耗尽后才终止整体上传
   Future<void> _runWithConcurrency(
       List<Future<void> Function()> tasks, int concurrency) async {
     int nextIndex = 0;
@@ -173,6 +182,8 @@ class _ChunkedUploader {
         try {
           await tasks[currentIndex]();
         } catch (e) {
+          // 分块已经过 maxChunkRetries 次重试仍失败，终止整体上传
+          debugPrint('[ChunkedUpload] 💀 分块 $currentIndex 重试耗尽，终止上传');
           errors.add(e);
           aborted = true;
           return;

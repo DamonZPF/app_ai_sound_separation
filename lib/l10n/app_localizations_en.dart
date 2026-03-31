@@ -316,4 +316,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wifiTransferClose => 'Stop Transfer';
+
+  @override
+  String get wifiTransferFileReceived => 'File Received';
+
+  @override
+  String wifiTransferFileReceivedMsg(Object fileName) {
+    return '\"$fileName\" has been added to the task queue.\n\nYou can continue transferring more files, or view task progress.';
+  }
+
+  @override
+  String get wifiTransferContinue => 'Continue Transfer';
+
+  @override
+  String get wifiTransferStartNow => 'View Tasks';
 }

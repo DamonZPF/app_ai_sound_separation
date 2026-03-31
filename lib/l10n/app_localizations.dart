@@ -691,6 +691,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关闭传输'**
   String get wifiTransferClose;
+
+  /// No description provided for @wifiTransferFileReceived.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件已接收'**
+  String get wifiTransferFileReceived;
+
+  /// No description provided for @wifiTransferFileReceivedMsg.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{fileName}」已加入任务队列。\n\n你可以继续传输更多文件，或查看任务进度。'**
+  String wifiTransferFileReceivedMsg(Object fileName);
+
+  /// No description provided for @wifiTransferContinue.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续传输'**
+  String get wifiTransferContinue;
+
+  /// No description provided for @wifiTransferStartNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看任务'**
+  String get wifiTransferStartNow;
 }
 
 class _AppLocalizationsDelegate

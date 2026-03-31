@@ -254,7 +254,8 @@ class BackgroundUploadChannel {
 
       case 'error':
         final error = map['error'] as String? ?? '未知错误';
-        debugPrint('[BGUpload] ❌ 错误回调: uploadId=$uploadId, error=$error');
+        final isRetryable = map['isRetryable'] as bool? ?? false;
+        debugPrint('[BGUpload] ${isRetryable ? "⚠️" : "❌"} 错误回调: uploadId=$uploadId, error=$error, retryable=$isRetryable');
         callbacks.onError?.call(error);
         break;
     }

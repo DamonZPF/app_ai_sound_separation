@@ -34,6 +34,9 @@ class UploadTaskQueue {
   /// 上次回调给 UI 的进度值（用于节流，减少对象重建）
   final Map<String, int> _lastNotifiedProgress = {};
 
+  /// 模拟进度定时器（processing 阶段缓慢递增，避免进度条卡死）
+  final Map<String, Timer> _simulatedProgressTimers = {};
+
   /// 初始化：从持久化存储恢复队列
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -205,18 +208,36 @@ class UploadTaskQueue {
     _processTask(localId);
   }
 
-  /// 移除本地任务（同时清理持久化文件）
+  /// 移除本地任务（同时清理持久化文件、模拟进度、PendingTaskStore）
   void removeTask(String localId) {
     final task = tasks.firstWhere(
       (t) => t.stemTaskId == localId,
       orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: 'unknown', createdAt: ''),
     );
+
+    // 停止模拟进度定时器
+    _stopSimulatedProgress(localId);
+    _lastNotifiedProgress.remove(localId);
+
     // 清理持久化的文件副本
     _cleanupPersistedFile(task.uploadParams?.filePath);
+
+    // 如果任务处于 processing 状态，还需要清理 PendingTaskStore
+    if (task.status == 'processing' || task.status == 'uploading') {
+      // PendingTaskStore 中存的是服务端 taskId，遍历清理
+      final pendingTasks = PendingTaskStore.instance.tasks;
+      for (final pt in pendingTasks) {
+        if (pt.trackTitle == task.trackTitle && pt.stem == task.stem) {
+          PendingTaskStore.instance.removeTask(pt.stemTaskId);
+          break;
+        }
+      }
+    }
 
     tasksNotifier.value =
         tasks.where((t) => t.stemTaskId != localId).toList();
     _persist();
+    debugPrint('[TaskQueue] 🗑 已移除任务: $localId (${task.status})');
   }
 
   // ──────────────────────────────────────────────
@@ -346,11 +367,18 @@ class UploadTaskQueue {
             uploadParams: t.uploadParams,
           ));
 
+      // 启动模拟进度：每 2 秒递增 1%，最高到 95%
+      // 服务端真实进度超过模拟值时会自动采用真实值
+      _startSimulatedProgress(localId, startFrom: 50);
+
       // 轮询
       final result = await _api.pollTask(
         stemTaskId,
         onProgress: (p) => _updateProgress(localId, p),
       );
+
+      // 停止模拟进度
+      _stopSimulatedProgress(localId);
 
       if (result == null) {
         _markFailed(localId, '处理超时');
@@ -389,6 +417,7 @@ class UploadTaskQueue {
       await PendingTaskStore.instance.removeTask(stemTaskId);
       debugPrint('[TaskQueue] ✅ 任务完成: $localId');
     } catch (e) {
+      _stopSimulatedProgress(localId);
       debugPrint('[TaskQueue] ❌ 处理失败: $localId, $e');
       _markFailed(localId, e.toString());
     }
@@ -419,6 +448,35 @@ class UploadTaskQueue {
           uploadParams: t.uploadParams,
           results: t.results,
         ), persist: false);
+  }
+
+  // ──────────────────────────────────────────────
+  // 模拟进度：processing 阶段缓慢递增
+  // 避免服务端阶段式进度（5→15→20→...）导致进度条长时间不动
+  // ──────────────────────────────────────────────
+
+  void _startSimulatedProgress(String localId, {required int startFrom}) {
+    _stopSimulatedProgress(localId); // 避免重复
+    int simulated = startFrom;
+    _simulatedProgressTimers[localId] = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) {
+        final current = _lastNotifiedProgress[localId] ?? startFrom;
+        // 只在模拟值 > 当前显示值时才递增（真实进度优先）
+        simulated++;
+        if (simulated > current && simulated <= 95) {
+          _updateProgress(localId, simulated);
+        } else if (current >= simulated) {
+          // 真实进度已超过模拟值，同步
+          simulated = current;
+        }
+      },
+    );
+  }
+
+  void _stopSimulatedProgress(String localId) {
+    _simulatedProgressTimers[localId]?.cancel();
+    _simulatedProgressTimers.remove(localId);
   }
 
   void _markFailed(String localId, String error) {

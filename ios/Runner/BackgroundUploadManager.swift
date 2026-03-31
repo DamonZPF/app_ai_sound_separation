@@ -59,14 +59,18 @@ class BackgroundUploadManager: NSObject, FlutterPlugin, URLSessionDataDelegate, 
         bgConfig.isDiscretionary = false
         bgConfig.sessionSendsLaunchEvents = true
         bgConfig.shouldUseExtendedBackgroundIdleMode = true
-        bgConfig.timeoutIntervalForRequest = 1800
+        // 单次请求超时 120 秒：每个 chunk 5MB，120 秒足够；网络中断后尽快触发重试
+        bgConfig.timeoutIntervalForRequest = 120
+        // 总资源时限不限（整个上传流程可能持续较久）
         bgConfig.timeoutIntervalForResource = 0
         bgConfig.httpMaximumConnectionsPerHost = 6
         backgroundSession = URLSession(configuration: bgConfig, delegate: self, delegateQueue: nil)
 
         // 前台会话 — App 在前台时全速上传（无系统进程中转开销）
         let fgConfig = URLSessionConfiguration.default
-        fgConfig.timeoutIntervalForRequest = 0             // 无超时（前台 session 生效）
+        // 90 秒超时：网络变差时及时触发 chunked_uploader 的重试机制
+        // 设为 0 会导致请求永远挂起，不会触发 didCompleteWithError
+        fgConfig.timeoutIntervalForRequest = 90
         fgConfig.timeoutIntervalForResource = 0
         fgConfig.httpMaximumConnectionsPerHost = 6
         foregroundSession = URLSession(configuration: fgConfig, delegate: self, delegateQueue: nil)
@@ -310,11 +314,26 @@ class BackgroundUploadManager: NSObject, FlutterPlugin, URLSessionDataDelegate, 
         cleanupTempFiles(for: uploadId)
 
         if let error = error {
-            NSLog("[BackgroundUpload] ❌ 任务失败 \(uploadId): \(error.localizedDescription)")
+            let nsError = error as NSError
+            let isCancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+            let isTimeout = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorTimedOut
+            let isNetworkLost = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorNetworkConnectionLost
+
+            if isCancelled {
+                NSLog("[BackgroundUpload] ⚠️ 任务被取消 \(uploadId)（可能 App 切后台），chunked_uploader 将自动重试")
+            } else if isTimeout {
+                NSLog("[BackgroundUpload] ⏰ 任务超时 \(uploadId)，chunked_uploader 将自动重试")
+            } else if isNetworkLost {
+                NSLog("[BackgroundUpload] 📡 网络连接中断 \(uploadId)，chunked_uploader 将自动重试")
+            } else {
+                NSLog("[BackgroundUpload] ❌ 任务失败 \(uploadId): \(error.localizedDescription)")
+            }
+
             sendEvent([
                 "type": "error",
                 "uploadId": uploadId,
                 "error": error.localizedDescription,
+                "isRetryable": isCancelled || isTimeout || isNetworkLost,
             ])
         } else {
             // 尝试解析响应

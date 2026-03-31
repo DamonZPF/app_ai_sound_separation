@@ -98,5 +98,14 @@
   "wifiTransferStopped": "WiFi transfer service stopped",
   "wifiTransferReceived": "File received, processing...",
   "wifiTransferNoWifi": "Not connected to WiFi",
-  "wifiTransferClose": "Stop Transfer"
+  "wifiTransferClose": "Stop Transfer",
+  "wifiTransferFileReceived": "File Received",
+  "wifiTransferFileReceivedMsg": "\"{fileName}\" has been added to the task queue.\n\nYou can continue transferring more files, or view task progress.",
+  "@wifiTransferFileReceivedMsg": {
+    "placeholders": {
+      "fileName": {}
+    }
+  },
+  "wifiTransferContinue": "Continue Transfer",
+  "wifiTransferStartNow": "View Tasks"
 }

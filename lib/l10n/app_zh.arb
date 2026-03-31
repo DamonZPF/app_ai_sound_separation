@@ -98,5 +98,14 @@
   "wifiTransferStopped": "WiFi 传输服务已停止",
   "wifiTransferReceived": "已收到文件，正在处理...",
   "wifiTransferNoWifi": "未连接 WiFi，无法启动传输服务",
-  "wifiTransferClose": "关闭传输"
+  "wifiTransferClose": "关闭传输",
+  "wifiTransferFileReceived": "文件已接收",
+  "wifiTransferFileReceivedMsg": "「{fileName}」已加入任务队列。\n\n你可以继续传输更多文件，或查看任务进度。",
+  "@wifiTransferFileReceivedMsg": {
+    "placeholders": {
+      "fileName": {}
+    }
+  },
+  "wifiTransferContinue": "继续传输",
+  "wifiTransferStartNow": "查看任务"
 }

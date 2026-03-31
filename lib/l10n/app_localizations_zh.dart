@@ -307,4 +307,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get wifiTransferClose => '关闭传输';
+
+  @override
+  String get wifiTransferFileReceived => '文件已接收';
+
+  @override
+  String wifiTransferFileReceivedMsg(Object fileName) {
+    return '「$fileName」已加入任务队列。\n\n你可以继续传输更多文件，或查看任务进度。';
+  }
+
+  @override
+  String get wifiTransferContinue => '继续传输';
+
+  @override
+  String get wifiTransferStartNow => '查看任务';
 }

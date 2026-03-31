@@ -330,4 +330,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wifiTransferStartNow => 'View Tasks';
+
+  @override
+  String get errorNetworkLost =>
+      'Network connection lost, please check and retry';
+
+  @override
+  String get errorTimeout => 'Upload timed out, please check network and retry';
+
+  @override
+  String get errorNoInternet =>
+      'No internet connection, please check network settings';
+
+  @override
+  String get errorServerError => 'Server error, please try again later';
+
+  @override
+  String get errorFileNotFound =>
+      'File has been cleaned up, please select a new file';
+
+  @override
+  String get errorUploadFailed => 'Upload failed, please retry';
+
+  @override
+  String get errorProcessingFailed => 'Processing failed';
+
+  @override
+  String get errorProcessingTimeout => 'Processing timed out';
+
+  @override
+  String get errorUploadInterrupted => 'Upload interrupted, please retry';
+
+  @override
+  String get errorMissingParams => 'Missing upload parameters';
 }

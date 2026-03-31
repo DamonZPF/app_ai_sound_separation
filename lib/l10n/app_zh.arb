@@ -107,5 +107,16 @@
     }
   },
   "wifiTransferContinue": "继续传输",
-  "wifiTransferStartNow": "查看任务"
+  "wifiTransferStartNow": "查看任务",
+
+  "errorNetworkLost": "网络连接中断，请检查网络后重试",
+  "errorTimeout": "上传超时，请检查网络后重试",
+  "errorNoInternet": "无网络连接，请检查网络设置",
+  "errorServerError": "服务器异常，请稍后重试",
+  "errorFileNotFound": "文件已被清理，请重新选择文件上传",
+  "errorUploadFailed": "上传失败，请重试",
+  "errorProcessingFailed": "处理失败",
+  "errorProcessingTimeout": "处理超时",
+  "errorUploadInterrupted": "上传已中断，请重试",
+  "errorMissingParams": "缺少上传参数"
 }

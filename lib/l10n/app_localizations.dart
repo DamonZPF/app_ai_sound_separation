@@ -715,6 +715,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'查看任务'**
   String get wifiTransferStartNow;
+
+  /// No description provided for @errorNetworkLost.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络连接中断，请检查网络后重试'**
+  String get errorNetworkLost;
+
+  /// No description provided for @errorTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传超时，请检查网络后重试'**
+  String get errorTimeout;
+
+  /// No description provided for @errorNoInternet.
+  ///
+  /// In zh, this message translates to:
+  /// **'无网络连接，请检查网络设置'**
+  String get errorNoInternet;
+
+  /// No description provided for @errorServerError.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器异常，请稍后重试'**
+  String get errorServerError;
+
+  /// No description provided for @errorFileNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件已被清理，请重新选择文件上传'**
+  String get errorFileNotFound;
+
+  /// No description provided for @errorUploadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传失败，请重试'**
+  String get errorUploadFailed;
+
+  /// No description provided for @errorProcessingFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理失败'**
+  String get errorProcessingFailed;
+
+  /// No description provided for @errorProcessingTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理超时'**
+  String get errorProcessingTimeout;
+
+  /// No description provided for @errorUploadInterrupted.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传已中断，请重试'**
+  String get errorUploadInterrupted;
+
+  /// No description provided for @errorMissingParams.
+  ///
+  /// In zh, this message translates to:
+  /// **'缺少上传参数'**
+  String get errorMissingParams;
 }
 
 class _AppLocalizationsDelegate

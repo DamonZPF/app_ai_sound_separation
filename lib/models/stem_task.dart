@@ -1,18 +1,21 @@
 /// 数据模型：分轨任务和结果
 class StemTask {
   final String stemTaskId;
+  /// 服务端返回的任务 ID（上传完成后赋值，用于轮询和匹配）
+  final String? serverStemTaskId;
   final String trackTitle;
   final String stem;
-  String status; // uploading / pending / processing / completed / failed
+  final String status; // uploading / pending / processing / completed / failed
   final String createdAt;
-  int progress;
-  String? errorMessage;
-  List<StemResultItem>? results;
+  final int progress;
+  final String? errorMessage;
+  final List<StemResultItem>? results;
   // 本地上传参数（用于重试）
-  UploadParams? uploadParams;
+  final UploadParams? uploadParams;
 
   StemTask({
     required this.stemTaskId,
+    this.serverStemTaskId,
     required this.trackTitle,
     required this.stem,
     this.status = 'pending',
@@ -25,6 +28,7 @@ class StemTask {
 
   Map<String, dynamic> toJson() => {
         'stemTaskId': stemTaskId,
+        if (serverStemTaskId != null) 'serverStemTaskId': serverStemTaskId,
         'trackTitle': trackTitle,
         'stem': stem,
         'status': status,
@@ -38,6 +42,7 @@ class StemTask {
 
   factory StemTask.fromJson(Map<String, dynamic> json) => StemTask(
         stemTaskId: json['stemTaskId'] ?? '',
+        serverStemTaskId: json['serverStemTaskId'],
         trackTitle: json['trackTitle'] ?? '',
         stem: json['stem'] ?? '',
         status: json['status'] ?? 'pending',

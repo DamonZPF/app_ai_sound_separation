@@ -321,4 +321,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get wifiTransferStartNow => '查看任务';
+
+  @override
+  String get errorNetworkLost => '网络连接中断，请检查网络后重试';
+
+  @override
+  String get errorTimeout => '上传超时，请检查网络后重试';
+
+  @override
+  String get errorNoInternet => '无网络连接，请检查网络设置';
+
+  @override
+  String get errorServerError => '服务器异常，请稍后重试';
+
+  @override
+  String get errorFileNotFound => '文件已被清理，请重新选择文件上传';
+
+  @override
+  String get errorUploadFailed => '上传失败，请重试';
+
+  @override
+  String get errorProcessingFailed => '处理失败';
+
+  @override
+  String get errorProcessingTimeout => '处理超时';
+
+  @override
+  String get errorUploadInterrupted => '上传已中断，请重试';
+
+  @override
+  String get errorMissingParams => '缺少上传参数';
 }

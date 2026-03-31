@@ -112,7 +112,7 @@ class _ChunkedUploader {
   }
 
   /// 上传单个分块（通过原生后台通道，含重试）
-  /// 每个分块独立重试，超时保护 120 秒
+  /// 每个分块独立重试，超时保护 180 秒
   Future<void> _uploadChunkWithRetry(int index) async {
     final chunkOffset = index * opts.chunkSize;
     final chunkLength = min(opts.chunkSize, opts.totalSize - chunkOffset);
@@ -202,24 +202,41 @@ class _ChunkedUploader {
     }
   }
 
-  /// 合并分块（通过原生后台通道）
+  /// 合并分块（通过原生后台通道，含重试）
   Future<void> _mergeChunks() async {
     debugPrint('[ChunkedUpload] 🔗 所有分块上传完成，请求合并...');
     opts.onProgress?.call(47);
 
-    final stemTaskId = await _bgChannel.mergeChunks(
-      uploadId: identifier,
-      identifier: identifier,
-      fileName: opts.fileName,
-      userId: opts.userId,
-      stem: opts.stem,
-      trackTitle: opts.trackTitle,
-      outputFormat: opts.outputFormat,
-    );
+    const maxMergeRetries = 3;
+    for (int attempt = 1; attempt <= maxMergeRetries; attempt++) {
+      try {
+        final stemTaskId = await _bgChannel.mergeChunks(
+          uploadId: identifier,
+          identifier: identifier,
+          fileName: opts.fileName,
+          userId: opts.userId,
+          stem: opts.stem,
+          trackTitle: opts.trackTitle,
+          outputFormat: opts.outputFormat,
+        ).timeout(
+          const Duration(seconds: 120),
+          onTimeout: () {
+            throw TimeoutException('合并请求超时 (120s)', const Duration(seconds: 120));
+          },
+        );
 
-    debugPrint('[ChunkedUpload] ✅ 合并成功，stem_task_id: $stemTaskId');
-    opts.onProgress?.call(50);
-    opts.onComplete?.call(stemTaskId);
+        debugPrint('[ChunkedUpload] ✅ 合并成功，stem_task_id: $stemTaskId');
+        opts.onProgress?.call(50);
+        opts.onComplete?.call(stemTaskId);
+        return;
+      } catch (e) {
+        debugPrint('[ChunkedUpload] 合并请求第 $attempt/$maxMergeRetries 次失败: $e');
+        if (attempt >= maxMergeRetries) rethrow;
+        final waitMs = 2000 * attempt;
+        debugPrint('[ChunkedUpload] ⏳ 等待 ${waitMs}ms 后重试合并...');
+        await Future.delayed(Duration(milliseconds: waitMs));
+      }
+    }
   }
 
   /// 主上传流程

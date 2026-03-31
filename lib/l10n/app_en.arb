@@ -107,5 +107,16 @@
     }
   },
   "wifiTransferContinue": "Continue Transfer",
-  "wifiTransferStartNow": "View Tasks"
+  "wifiTransferStartNow": "View Tasks",
+
+  "errorNetworkLost": "Network connection lost, please check and retry",
+  "errorTimeout": "Upload timed out, please check network and retry",
+  "errorNoInternet": "No internet connection, please check network settings",
+  "errorServerError": "Server error, please try again later",
+  "errorFileNotFound": "File has been cleaned up, please select a new file",
+  "errorUploadFailed": "Upload failed, please retry",
+  "errorProcessingFailed": "Processing failed",
+  "errorProcessingTimeout": "Processing timed out",
+  "errorUploadInterrupted": "Upload interrupted, please retry",
+  "errorMissingParams": "Missing upload parameters"
 }

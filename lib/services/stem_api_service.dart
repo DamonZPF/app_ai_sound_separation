@@ -16,7 +16,10 @@ import 'supabase_service.dart';
 const int _chunkedThreshold = 10 * 1024 * 1024;
 
 class StemApiService {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+  ));
   final BackgroundUploadChannel _bgChannel = BackgroundUploadChannel.instance;
   final Uuid _uuid = const Uuid();
 
@@ -72,7 +75,7 @@ class StemApiService {
     }
   }
 
-  /// 直接上传（小文件，< 10MB）— 通过原生后台通道
+  /// 直接上传（小文件，< 10MB）— 通过原生后台通道，含重试
   Future<String> _directUpload({
     required String filePath,
     required String fileName,
@@ -84,27 +87,44 @@ class StemApiService {
   }) async {
     onProgress?.call(5);
 
-    final uploadId = _uuid.v4();
-    debugPrint('[StemAPI] 开始后台上传: $fileName (uploadId: $uploadId)');
+    const maxRetries = 3;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final uploadId = _uuid.v4();
+        debugPrint('[StemAPI] 开始后台上传: $fileName (uploadId: $uploadId, 第 $attempt/$maxRetries 次)');
 
-    final stemTaskId = await _bgChannel.uploadFile(
-      filePath: filePath,
-      fileName: fileName,
-      uploadId: uploadId,
-      userId: userId,
-      stem: stem,
-      trackTitle: trackTitle,
-      outputFormat: outputFormat,
-      onProgress: (p) {
-        // 原生层进度 0~100 映射到 5~45
-        final mapped = 5 + (p * 0.4).floor();
-        onProgress?.call(mapped);
-      },
-    );
+        final stemTaskId = await _bgChannel.uploadFile(
+          filePath: filePath,
+          fileName: fileName,
+          uploadId: uploadId,
+          userId: userId,
+          stem: stem,
+          trackTitle: trackTitle,
+          outputFormat: outputFormat,
+          onProgress: (p) {
+            // 原生层进度 0~100 映射到 5~45
+            final mapped = 5 + (p * 0.4).floor();
+            onProgress?.call(mapped);
+          },
+        ).timeout(
+          const Duration(seconds: 300),
+          onTimeout: () {
+            throw TimeoutException('小文件上传超时 (300s)', const Duration(seconds: 300));
+          },
+        );
 
-    onProgress?.call(50);
-    debugPrint('[StemAPI] ✅ 后台上传成功, stemTaskId: $stemTaskId');
-    return stemTaskId;
+        onProgress?.call(50);
+        debugPrint('[StemAPI] ✅ 后台上传成功, stemTaskId: $stemTaskId');
+        return stemTaskId;
+      } catch (e) {
+        debugPrint('[StemAPI] 小文件上传第 $attempt/$maxRetries 次失败: $e');
+        if (attempt >= maxRetries) rethrow;
+        final waitMs = 2000 * attempt;
+        debugPrint('[StemAPI] ⏳ 等待 ${waitMs}ms 后重试...');
+        await Future.delayed(Duration(milliseconds: waitMs));
+      }
+    }
+    throw Exception('unreachable');
   }
 
   /// 分块上传（大文件，≥ 10MB）

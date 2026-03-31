@@ -37,6 +37,9 @@ class UploadTaskQueue {
   /// 模拟进度定时器（processing 阶段缓慢递增，避免进度条卡死）
   final Map<String, Timer> _simulatedProgressTimers = {};
 
+  /// 已被用户删除的任务 ID 集合（用于终止残留的 _processTask 异步操作）
+  final Set<String> _removedTaskIds = {};
+
   /// 初始化：从持久化存储恢复队列
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -74,6 +77,7 @@ class UploadTaskQueue {
           // 标记为失败，用户可重试
           restored[i] = StemTask(
             stemTaskId: task.stemTaskId,
+            serverStemTaskId: task.serverStemTaskId,
             trackTitle: task.trackTitle,
             stem: task.stem,
             status: 'failed',
@@ -197,6 +201,7 @@ class UploadTaskQueue {
 
     _updateTask(localId, (t) => StemTask(
           stemTaskId: t.stemTaskId,
+          serverStemTaskId: t.serverStemTaskId,
           trackTitle: t.trackTitle,
           stem: t.stem,
           status: 'uploading',
@@ -215,6 +220,9 @@ class UploadTaskQueue {
       orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: 'unknown', createdAt: ''),
     );
 
+    // 标记为已删除，终止残留的 _processTask 异步操作
+    _removedTaskIds.add(localId);
+
     // 停止模拟进度定时器
     _stopSimulatedProgress(localId);
     _lastNotifiedProgress.remove(localId);
@@ -222,22 +230,15 @@ class UploadTaskQueue {
     // 清理持久化的文件副本
     _cleanupPersistedFile(task.uploadParams?.filePath);
 
-    // 如果任务处于 processing 状态，还需要清理 PendingTaskStore
-    if (task.status == 'processing' || task.status == 'uploading') {
-      // PendingTaskStore 中存的是服务端 taskId，遍历清理
-      final pendingTasks = PendingTaskStore.instance.tasks;
-      for (final pt in pendingTasks) {
-        if (pt.trackTitle == task.trackTitle && pt.stem == task.stem) {
-          PendingTaskStore.instance.removeTask(pt.stemTaskId);
-          break;
-        }
-      }
+    // 精确匹配 PendingTaskStore：使用 serverStemTaskId
+    if (task.serverStemTaskId != null && task.serverStemTaskId!.isNotEmpty) {
+      PendingTaskStore.instance.removeTask(task.serverStemTaskId!);
     }
 
     tasksNotifier.value =
         tasks.where((t) => t.stemTaskId != localId).toList();
     _persist();
-    debugPrint('[TaskQueue] 🗑 已移除任务: $localId (${task.status})');
+    debugPrint('[TaskQueue] 🗑 已移除任务: $localId (状态=${task.status}, server=${task.serverStemTaskId})');
   }
 
   // ──────────────────────────────────────────────
@@ -248,12 +249,9 @@ class UploadTaskQueue {
 
   /// 通过服务端 stemTaskId 查找队列中的 localId
   String? _findLocalIdByServerTaskId(String serverTaskId) {
-    // processing 状态下 stemTaskId 还是 localId，
-    // 但 PendingTaskStore 中存的是服务端 id
-    // 需要遍历查找 uploadParams 或匹配规则
     for (final t in tasks) {
-      if (t.status == 'processing' || t.status == 'uploading') {
-        return t.stemTaskId; // 目前只有一个 processing 任务
+      if (t.serverStemTaskId == serverTaskId) {
+        return t.stemTaskId;
       }
     }
     return null;
@@ -273,6 +271,7 @@ class UploadTaskQueue {
     if (localId != null) {
       _updateTask(localId, (t) => StemTask(
             stemTaskId: t.stemTaskId,
+            serverStemTaskId: t.serverStemTaskId,
             trackTitle: t.trackTitle,
             stem: t.stem,
             status: 'completed',
@@ -342,6 +341,12 @@ class UploadTaskQueue {
 
       debugPrint('[TaskQueue] 上传完成, stemTaskId: $stemTaskId, 开始轮询...');
 
+      // 取消检查：用户可能在上传过程中删除了任务
+      if (_removedTaskIds.contains(localId)) {
+        debugPrint('[TaskQueue] ⏹ 任务已被用户删除，停止处理: $localId');
+        return;
+      }
+
       // 持久化到 PendingTaskStore（App 重启后可恢复轮询）
       final currentTask = tasks.firstWhere(
         (t) => t.stemTaskId == localId,
@@ -359,6 +364,7 @@ class UploadTaskQueue {
       // 更新状态为 processing，记录服务端 taskId
       _updateTask(localId, (t) => StemTask(
             stemTaskId: t.stemTaskId,
+            serverStemTaskId: stemTaskId,
             trackTitle: t.trackTitle,
             stem: t.stem,
             status: 'processing',
@@ -371,10 +377,19 @@ class UploadTaskQueue {
       // 服务端真实进度超过模拟值时会自动采用真实值
       _startSimulatedProgress(localId, startFrom: 50);
 
+      // 取消检查：轮询前确认任务未被删除
+      if (_removedTaskIds.contains(localId)) {
+        debugPrint('[TaskQueue] ⏹ 任务已被用户删除，停止轮询: $localId');
+        return;
+      }
+
       // 轮询
       final result = await _api.pollTask(
         stemTaskId,
-        onProgress: (p) => _updateProgress(localId, p),
+        onProgress: (p) {
+          if (_removedTaskIds.contains(localId)) return;
+          _updateProgress(localId, p);
+        },
       );
 
       // 停止模拟进度
@@ -404,6 +419,7 @@ class UploadTaskQueue {
 
       _updateTask(localId, (t) => StemTask(
             stemTaskId: t.stemTaskId,
+            serverStemTaskId: t.serverStemTaskId,
             trackTitle: result.trackTitle,
             stem: result.stem,
             status: 'completed',
@@ -418,8 +434,12 @@ class UploadTaskQueue {
       debugPrint('[TaskQueue] ✅ 任务完成: $localId');
     } catch (e) {
       _stopSimulatedProgress(localId);
+      if (_removedTaskIds.contains(localId)) {
+        debugPrint('[TaskQueue] ⏹ 任务已被用户删除，忽略异常: $localId');
+        return;
+      }
       debugPrint('[TaskQueue] ❌ 处理失败: $localId, $e');
-      _markFailed(localId, e.toString());
+      _markFailed(localId, _friendlyErrorMessage(e.toString()));
     }
   }
 
@@ -439,6 +459,7 @@ class UploadTaskQueue {
     // P1: 进度更新不立即写磁盘，仅刷新 UI
     _updateTask(localId, (t) => StemTask(
           stemTaskId: t.stemTaskId,
+          serverStemTaskId: t.serverStemTaskId,
           trackTitle: t.trackTitle,
           stem: t.stem,
           status: t.status,
@@ -483,6 +504,7 @@ class UploadTaskQueue {
     _lastNotifiedProgress.remove(localId);
     _updateTask(localId, (t) => StemTask(
           stemTaskId: t.stemTaskId,
+          serverStemTaskId: t.serverStemTaskId,
           trackTitle: t.trackTitle,
           stem: t.stem,
           status: 'failed',
@@ -491,6 +513,32 @@ class UploadTaskQueue {
           errorMessage: error,
           uploadParams: t.uploadParams,
         ), persist: true);
+  }
+
+  /// 将技术错误消息转换为用户可读的描述
+  String _friendlyErrorMessage(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('network connection was lost') ||
+        lower.contains('networkconnectionlost')) {
+      return '网络连接中断，请检查网络后重试';
+    }
+    if (lower.contains('timed out') || lower.contains('timeout')) {
+      return '上传超时，请检查网络后重试';
+    }
+    if (lower.contains('no internet') || lower.contains('not connected')) {
+      return '无网络连接，请检查网络设置';
+    }
+    if (lower.contains('server') && lower.contains('500')) {
+      return '服务器异常，请稍后重试';
+    }
+    if (lower.contains('file') && (lower.contains('not found') || lower.contains('no such'))) {
+      return '文件已被清理，请重新选择文件上传';
+    }
+    // 截断过长的技术消息
+    if (raw.length > 80) {
+      return '上传失败，请重试';
+    }
+    return raw;
   }
 
   /// P1: persist 参数控制是否写磁盘

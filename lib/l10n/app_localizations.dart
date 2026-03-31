@@ -374,6 +374,12 @@ abstract class AppLocalizations {
   /// **'已完成'**
   String get historyStatusCompleted;
 
+  /// No description provided for @historyStatusQueued.
+  ///
+  /// In zh, this message translates to:
+  /// **'排队中'**
+  String get historyStatusQueued;
+
   /// No description provided for @historyStatusFailed.
   ///
   /// In zh, this message translates to:

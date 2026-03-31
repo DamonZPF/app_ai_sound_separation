@@ -46,6 +46,7 @@
   "historyStatusPending": "等待处理",
   "historyStatusProcessing": "处理中",
   "historyStatusCompleted": "已完成",
+  "historyStatusQueued": "排队中",
   "historyStatusFailed": "失败",
   "historyPlay": "播放",
   "historyPause": "暂停",

@@ -46,6 +46,7 @@
   "historyStatusPending": "Pending",
   "historyStatusProcessing": "Processing",
   "historyStatusCompleted": "Completed",
+  "historyStatusQueued": "Queued",
   "historyStatusFailed": "Failed",
   "historyPlay": "Play",
   "historyPause": "Pause",

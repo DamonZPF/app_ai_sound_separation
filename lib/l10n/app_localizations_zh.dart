@@ -147,6 +147,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyStatusCompleted => '已完成';
 
   @override
+  String get historyStatusQueued => '排队中';
+
+  @override
   String get historyStatusFailed => '失败';
 
   @override

@@ -151,6 +151,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyStatusCompleted => 'Completed';
 
   @override
+  String get historyStatusQueued => 'Queued';
+
+  @override
   String get historyStatusFailed => 'Failed';
 
   @override

@@ -451,9 +451,10 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
 }
 
 // ──────────────────────────────────────────────
-// 队列任务卡片（上传中 / 处理中 / 失败）— 保持不变
+// 队列任务卡片（排队 / 上传中 / 处理中 / 失败）
+// Flutter Expert: 动画 + 渐变进度条 + 状态过渡
 // ──────────────────────────────────────────────
-class _QueueTaskCard extends StatelessWidget {
+class _QueueTaskCard extends StatefulWidget {
   final StemTask task;
   final VoidCallback onRetry;
   final VoidCallback onRemove;
@@ -465,116 +466,381 @@ class _QueueTaskCard extends StatelessWidget {
   });
 
   @override
+  State<_QueueTaskCard> createState() => _QueueTaskCardState();
+}
+
+class _QueueTaskCardState extends State<_QueueTaskCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _updateAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _QueueTaskCard old) {
+    super.didUpdateWidget(old);
+    if (old.task.status != widget.task.status) {
+      _updateAnimation();
+    }
+  }
+
+  void _updateAnimation() {
+    final isActive = widget.task.status == 'processing' ||
+        widget.task.status == 'uploading';
+    if (isActive) {
+      _pulseController.repeat(reverse: true);
+    } else {
+      _pulseController.stop();
+      _pulseController.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
 
-    final isFailed = task.isFailed;
-    final statusColor = isFailed ? Colors.red : theme.colorScheme.primary;
+    final isFailed = widget.task.isFailed;
+    final isProcessing = widget.task.status == 'processing';
+    final isUploading = widget.task.status == 'uploading';
+    final isQueued = widget.task.status == 'queued';
+    final isActive = isProcessing || isUploading;
 
-    String statusText;
-    if (task.status == 'uploading') {
+    // 状态颜色
+    final Color statusColor;
+    if (isFailed) {
+      statusColor = Colors.red;
+    } else if (isQueued) {
+      statusColor = Colors.orange;
+    } else {
+      statusColor = theme.colorScheme.primary;
+    }
+
+    // 状态文本
+    final String statusText;
+    if (isUploading) {
       statusText = l10n.historyStatusUploading;
-    } else if (task.status == 'processing') {
+    } else if (isProcessing) {
       statusText = l10n.historyStatusProcessing;
     } else if (isFailed) {
       statusText = l10n.historyStatusFailed;
+    } else if (isQueued) {
+      statusText = l10n.historyStatusQueued;
     } else {
-      statusText = task.status;
+      statusText = widget.task.status;
     }
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 标题行
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    task.trackTitle.isNotEmpty ? task.trackTitle : task.stem,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+    // 状态图标
+    final IconData statusIcon;
+    if (isUploading) {
+      statusIcon = Icons.cloud_upload_outlined;
+    } else if (isProcessing) {
+      statusIcon = Icons.auto_awesome;
+    } else if (isFailed) {
+      statusIcon = Icons.error_outline;
+    } else if (isQueued) {
+      statusIcon = Icons.hourglass_top;
+    } else {
+      statusIcon = Icons.check_circle_outline;
+    }
+
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final pulseOpacity = isActive
+            ? 0.04 + 0.04 * _pulseController.value
+            : 0.0;
+
+        return Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: isFailed ? 1 : 2,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: isActive
+                  ? Border.all(
+                      color: statusColor.withValues(alpha: 0.3),
+                      width: 1,
+                    )
+                  : null,
+              gradient: isActive
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        statusColor.withValues(alpha: pulseOpacity),
+                        Colors.transparent,
+                      ],
+                    )
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 标题行
+                  Row(
+                    children: [
+                      // 状态图标 + 动画
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Icon(
+                          statusIcon,
+                          key: ValueKey(statusIcon),
+                          size: 20,
+                          color: statusColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // 标题
+                      Expanded(
+                        child: Text(
+                          widget.task.trackTitle.isNotEmpty
+                              ? widget.task.trackTitle
+                              : widget.task.stem,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // 分轨类型标签
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          widget.task.stem,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // 状态标签
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          statusText,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
+
+                  // 进度条（非失败状态）
+                  if (!isFailed && !isQueued) ...[
+                    const SizedBox(height: 14),
+                    _AnimatedProgressBar(
+                      progress: widget.task.progress / 100,
                       color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ),
-              ],
-            ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          isUploading
+                              ? l10n.historyStatusUploading
+                              : l10n.historyStatusProcessing,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.5),
+                            fontSize: 11,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${widget.task.progress}%',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
 
-            // 进度条（非失败状态）
-            if (!isFailed) ...[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: task.progress / 100,
-                  minHeight: 4,
-                ),
+                  // 排队提示
+                  if (isQueued) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.orange.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          l10n.historyStatusQueued,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.orange,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // 错误信息
+                  if (isFailed && widget.task.errorMessage != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              size: 14, color: Colors.red),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              UploadTaskQueue.localizeError(
+                                  widget.task.errorMessage, l10n),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: Colors.red, fontSize: 12),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // 操作按钮
+                  if (isFailed) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: widget.onRetry,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: Text(l10n.historyRetry,
+                              style: const TextStyle(fontSize: 12)),
+                          style: FilledButton.styleFrom(
+                            minimumSize: Size.zero,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: widget.onRemove,
+                          icon: Icon(Icons.close, size: 16,
+                              color: theme.colorScheme.outline),
+                          label: Text(l10n.historyDelete,
+                              style: TextStyle(
+                                  color: theme.colorScheme.outline,
+                                  fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: Size.zero,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            side: BorderSide(
+                                color: theme.colorScheme.outline
+                                    .withValues(alpha: 0.3)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${task.progress}%',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 带动画的渐变进度条
+class _AnimatedProgressBar extends StatelessWidget {
+  final double progress;
+  final Color color;
+
+  const _AnimatedProgressBar({
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 6,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOut,
+                width: constraints.maxWidth * progress.clamp(0.0, 1.0),
+                height: 6,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withValues(alpha: 0.7),
+                      color,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
               ),
             ],
-
-            // 错误信息
-            if (isFailed && task.errorMessage != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                UploadTaskQueue.localizeError(task.errorMessage, l10n),
-                style: theme.textTheme.bodySmall?.copyWith(color: Colors.red),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-
-            // 操作按钮
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isFailed)
-                  TextButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: Text(l10n.historyRetry,
-                        style: const TextStyle(fontSize: 12)),
-                  ),
-                if (isFailed)
-                  TextButton.icon(
-                    onPressed: onRemove,
-                    icon:
-                        Icon(Icons.close, size: 18, color: Colors.grey),
-                    label: Text(l10n.historyDelete,
-                        style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  ),
-              ],
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

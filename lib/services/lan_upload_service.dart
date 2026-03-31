@@ -235,14 +235,14 @@ class LanUploadService {
     return -1;
   }
 
-  /// 生成网页上传界面
+  /// 生成网页上传界面（支持中英文自动切换）
   String _buildHtmlPage() {
     return '''<!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI音频分离 - WiFi上传</title>
+<title>AI Sound Separation - WiFi Transfer</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -343,13 +343,13 @@ input[type="file"] { display: none; }
 </head>
 <body>
 <div class="container">
-  <h1>🎵 AI音频分离</h1>
-  <p class="subtitle">通过 WiFi 从电脑传输文件到手机</p>
+  <h1 data-i18n="title">🎵 AI Sound Separation</h1>
+  <p class="subtitle" data-i18n="subtitle">Transfer files from computer to phone via WiFi</p>
 
   <div class="drop-zone" id="dropZone">
     <span class="icon">📁</span>
-    <p>拖拽文件到此处，或点击选择</p>
-    <p class="hint">支持 MP3、WAV、FLAC、M4A、MP4、MOV 等格式</p>
+    <p data-i18n="dropText">Drag & drop file here, or click to select</p>
+    <p class="hint" data-i18n="formatHint">Supports MP3, WAV, FLAC, M4A, MP4, MOV, etc.</p>
     <input type="file" id="fileInput" accept=".mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.mp4,.mov,.avi,.mkv,.webm">
   </div>
 
@@ -359,10 +359,51 @@ input[type="file"] { display: none; }
     <div class="status" id="statusText"></div>
   </div>
 
-  <p class="formats">单文件最大 200MB</p>
+  <p class="formats" data-i18n="maxSize">Max 200MB per file</p>
 </div>
 
 <script>
+// ── i18n ──
+const i18n = {
+  zh: {
+    title: '🎵 AI音频分离',
+    subtitle: '通过 WiFi 从电脑传输文件到手机',
+    dropText: '拖拽文件到此处，或点击选择',
+    formatHint: '支持 MP3、WAV、FLAC、M4A、MP4、MOV 等格式',
+    maxSize: '单文件最大 200MB',
+    uploading: '上传中...',
+    uploadingPct: (pct) => '上传中... ' + pct + '%',
+    success: '✅ 上传成功！文件已传输到手机App',
+    errorUpload: (msg) => '❌ 上传失败：' + msg,
+    errorNetwork: '❌ 网络错误，请检查连接',
+    errorSize: '文件大小超过 200MB 限制',
+  },
+  en: {
+    title: '🎵 AI Sound Separation',
+    subtitle: 'Transfer files from computer to phone via WiFi',
+    dropText: 'Drag & drop file here, or click to select',
+    formatHint: 'Supports MP3, WAV, FLAC, M4A, MP4, MOV, etc.',
+    maxSize: 'Max 200MB per file',
+    uploading: 'Uploading...',
+    uploadingPct: (pct) => 'Uploading... ' + pct + '%',
+    success: '✅ Upload successful! File transferred to phone.',
+    errorUpload: (msg) => '❌ Upload failed: ' + msg,
+    errorNetwork: '❌ Network error, check your connection',
+    errorSize: 'File exceeds 200MB limit',
+  }
+};
+
+const lang = navigator.language.startsWith('zh') ? 'zh' : 'en';
+const t = i18n[lang];
+
+// Apply static text
+document.querySelectorAll('[data-i18n]').forEach(el => {
+  const key = el.getAttribute('data-i18n');
+  if (t[key]) el.textContent = t[key];
+});
+document.title = t.title.replace('🎵 ', '') + ' - WiFi Transfer';
+
+// ── Upload logic ──
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const progressWrap = document.getElementById('progressWrap');
@@ -393,14 +434,14 @@ fileInput.addEventListener('change', () => {
 
 function uploadFile(file) {
   if (file.size > 200 * 1024 * 1024) {
-    alert('文件大小超过 200MB 限制');
+    alert(t.errorSize);
     return;
   }
 
   fileNameEl.textContent = file.name + ' (' + formatSize(file.size) + ')';
   progressWrap.classList.add('active');
   progressFill.style.width = '0%';
-  statusText.textContent = '上传中...';
+  statusText.textContent = t.uploading;
   statusText.className = 'status';
 
   const formData = new FormData();
@@ -413,23 +454,23 @@ function uploadFile(file) {
     if (e.lengthComputable) {
       const pct = Math.round(e.loaded / e.total * 100);
       progressFill.style.width = pct + '%';
-      statusText.textContent = '上传中... ' + pct + '%';
+      statusText.textContent = t.uploadingPct(pct);
     }
   };
 
   xhr.onload = () => {
     if (xhr.status === 200) {
       progressFill.style.width = '100%';
-      statusText.textContent = '✅ 上传成功！文件已传输到手机App';
+      statusText.textContent = t.success;
       statusText.className = 'status success';
     } else {
-      statusText.textContent = '❌ 上传失败：' + xhr.statusText;
+      statusText.textContent = t.errorUpload(xhr.statusText);
       statusText.className = 'status error';
     }
   };
 
   xhr.onerror = () => {
-    statusText.textContent = '❌ 网络错误，请检查连接';
+    statusText.textContent = t.errorNetwork;
     statusText.className = 'status error';
   };
 

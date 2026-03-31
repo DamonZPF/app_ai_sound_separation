@@ -535,7 +535,7 @@ class _QueueTaskCard extends StatelessWidget {
             if (isFailed && task.errorMessage != null) ...[
               const SizedBox(height: 8),
               Text(
-                task.errorMessage!,
+                UploadTaskQueue.localizeError(task.errorMessage, l10n),
                 style: theme.textTheme.bodySmall?.copyWith(color: Colors.red),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

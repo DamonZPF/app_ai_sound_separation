@@ -29,7 +29,7 @@ class ProfilePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  userId.isNotEmpty ? '${userId.substring(0, 8)}...' : '未登录',
+                  userId.isNotEmpty ? '${userId.substring(0, 8)}...' : l10n.mineNotLoggedIn,
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),

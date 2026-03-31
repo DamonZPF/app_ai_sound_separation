@@ -119,5 +119,28 @@
   "errorProcessingFailed": "处理失败",
   "errorProcessingTimeout": "处理超时",
   "errorUploadInterrupted": "上传已中断，请重试",
-  "errorMissingParams": "缺少上传参数"
+  "errorMissingParams": "缺少上传参数",
+
+  "stemNameVocals": "提取人声与伴奏",
+  "stemNameNoise": "去除背景噪音",
+  "stemNameDrums": "提取鼓点音轨",
+  "stemNameBass": "提取贝斯音轨",
+  "stemNameAcoustic": "提取原声吉他音轨",
+  "stemNameElectric": "提取电吉他音轨",
+  "stemNamePiano": "提取钢琴音轨",
+  "stemNameSynth": "提取合成器音轨",
+  "stemNameStrings": "提取弦乐音轨",
+  "stemNameWind": "提取管乐器音轨",
+
+  "errorPickAudioFailed": "选取音频失败",
+  "wifiTransferOpenInBrowser": "在电脑浏览器中输入",
+  "copiedToClipboard": "已复制到剪贴板",
+  "wifiTransferCopyUrl": "复制地址",
+  "wifiTransferReceivedCount": "已接收 {count} 个文件",
+  "@wifiTransferReceivedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "mineNotLoggedIn": "未登录"
 }

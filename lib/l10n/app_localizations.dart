@@ -781,6 +781,102 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'缺少上传参数'**
   String get errorMissingParams;
+
+  /// No description provided for @stemNameVocals.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取人声与伴奏'**
+  String get stemNameVocals;
+
+  /// No description provided for @stemNameNoise.
+  ///
+  /// In zh, this message translates to:
+  /// **'去除背景噪音'**
+  String get stemNameNoise;
+
+  /// No description provided for @stemNameDrums.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取鼓点音轨'**
+  String get stemNameDrums;
+
+  /// No description provided for @stemNameBass.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取贝斯音轨'**
+  String get stemNameBass;
+
+  /// No description provided for @stemNameAcoustic.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取原声吉他音轨'**
+  String get stemNameAcoustic;
+
+  /// No description provided for @stemNameElectric.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取电吉他音轨'**
+  String get stemNameElectric;
+
+  /// No description provided for @stemNamePiano.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取钢琴音轨'**
+  String get stemNamePiano;
+
+  /// No description provided for @stemNameSynth.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取合成器音轨'**
+  String get stemNameSynth;
+
+  /// No description provided for @stemNameStrings.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取弦乐音轨'**
+  String get stemNameStrings;
+
+  /// No description provided for @stemNameWind.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取管乐器音轨'**
+  String get stemNameWind;
+
+  /// No description provided for @errorPickAudioFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'选取音频失败'**
+  String get errorPickAudioFailed;
+
+  /// No description provided for @wifiTransferOpenInBrowser.
+  ///
+  /// In zh, this message translates to:
+  /// **'在电脑浏览器中输入'**
+  String get wifiTransferOpenInBrowser;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制到剪贴板'**
+  String get copiedToClipboard;
+
+  /// No description provided for @wifiTransferCopyUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制地址'**
+  String get wifiTransferCopyUrl;
+
+  /// No description provided for @wifiTransferReceivedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接收 {count} 个文件'**
+  String wifiTransferReceivedCount(Object count);
+
+  /// No description provided for @mineNotLoggedIn.
+  ///
+  /// In zh, this message translates to:
+  /// **'未登录'**
+  String get mineNotLoggedIn;
 }
 
 class _AppLocalizationsDelegate

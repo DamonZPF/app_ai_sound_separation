@@ -1,93 +1,111 @@
 // 首页 — 分离类型选择
 // 对应原 mini-program 的 index/index.tsx
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'upload_page.dart';
 
 /// 分离类型定义
 class StemType {
   final String id;
-  final String name;
+  final String nameKey; // l10n key
   final String icon; // emoji
   final IconData materialIcon;
   final List<Color> gradientColors;
 
   const StemType({
     required this.id,
-    required this.name,
+    required this.nameKey,
     required this.icon,
     required this.materialIcon,
     required this.gradientColors,
   });
+
+  /// 获取当前语言的类型名称
+  String localizedName(AppLocalizations l10n) {
+    switch (nameKey) {
+      case 'vocals': return l10n.stemNameVocals;
+      case 'noise': return l10n.stemNameNoise;
+      case 'drums': return l10n.stemNameDrums;
+      case 'bass': return l10n.stemNameBass;
+      case 'acoustic': return l10n.stemNameAcoustic;
+      case 'electric': return l10n.stemNameElectric;
+      case 'piano': return l10n.stemNamePiano;
+      case 'synth': return l10n.stemNameSynth;
+      case 'strings': return l10n.stemNameStrings;
+      case 'wind': return l10n.stemNameWind;
+      default: return nameKey;
+    }
+  }
 }
 
 /// 与小程序保持一致的 10 种分离类型
 const List<StemType> separationTypes = [
   StemType(
     id: 'vocals',
-    name: '提取人声与伴奏',
+    nameKey: 'vocals',
     icon: '🎵',
     materialIcon: Icons.mic,
     gradientColors: [Color(0xFF667eea), Color(0xFF764ba2)],
   ),
   StemType(
     id: 'noise',
-    name: '去除背景噪音',
+    nameKey: 'noise',
     icon: '🎙️',
     materialIcon: Icons.noise_aware,
     gradientColors: [Color(0xFF6a11cb), Color(0xFF2575fc)],
   ),
   StemType(
     id: 'drums',
-    name: '提取鼓点音轨',
+    nameKey: 'drums',
     icon: '🥁',
     materialIcon: Icons.music_note,
     gradientColors: [Color(0xFFf093fb), Color(0xFFf5576c)],
   ),
   StemType(
     id: 'bass',
-    name: '提取贝斯音轨',
+    nameKey: 'bass',
     icon: '🎸',
     materialIcon: Icons.graphic_eq,
     gradientColors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
   ),
   StemType(
     id: 'acoustic',
-    name: '提取原声吉他音轨',
+    nameKey: 'acoustic',
     icon: '🪕',
     materialIcon: Icons.queue_music,
     gradientColors: [Color(0xFF43e97b), Color(0xFF38f9d7)],
   ),
   StemType(
     id: 'electric',
-    name: '提取电吉他音轨',
+    nameKey: 'electric',
     icon: '🎸',
     materialIcon: Icons.electric_bolt,
     gradientColors: [Color(0xFFfa709a), Color(0xFFfee140)],
   ),
   StemType(
     id: 'piano',
-    name: '提取钢琴音轨',
+    nameKey: 'piano',
     icon: '🎹',
     materialIcon: Icons.piano,
     gradientColors: [Color(0xFFa18cd1), Color(0xFFfbc2eb)],
   ),
   StemType(
     id: 'synth',
-    name: '提取合成器音轨',
+    nameKey: 'synth',
     icon: '🎛️',
     materialIcon: Icons.tune,
     gradientColors: [Color(0xFFfad0c4), Color(0xFFffd1ff)],
   ),
   StemType(
     id: 'strings',
-    name: '提取弦乐音轨',
+    nameKey: 'strings',
     icon: '🎻',
     materialIcon: Icons.surround_sound,
     gradientColors: [Color(0xFFf6d365), Color(0xFFfda085)],
   ),
   StemType(
     id: 'wind',
-    name: '提取管乐器音轨',
+    nameKey: 'wind',
     icon: '🎺',
     materialIcon: Icons.air,
     gradientColors: [Color(0xFF89f7fe), Color(0xFF66a6ff)],
@@ -212,7 +230,7 @@ class _StemTypeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    stemType.name,
+                    stemType.localizedName(AppLocalizations.of(context)!),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,

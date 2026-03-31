@@ -51,6 +51,7 @@ class _UploadPageState extends State<UploadPage> {
   Future<void> _pickFromItunes() async {
     if (_isPicking) return;
     _isPicking = true;
+    final l10n = AppLocalizations.of(context)!;
     try {
       final result = await _itunesChannel.invokeMethod('pickFromItunes');
       if (result == null) return; // 用户取消
@@ -59,7 +60,7 @@ class _UploadPageState extends State<UploadPage> {
       final name = data['name'] as String;
       _enqueueFile(path, name);
     } on PlatformException catch (e) {
-      _showError(e.message ?? '选取音频失败');
+      _showError(e.message ?? l10n.errorPickAudioFailed);
     } catch (e) {
       _showError(e.toString());
     } finally {
@@ -543,7 +544,7 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                         child: Column(
                           children: [
                             Text(
-                              '在电脑浏览器中输入',
+                              l10n.wifiTransferOpenInBrowser,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.white,
                               ),
@@ -563,15 +564,15 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: url));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('已复制到剪贴板'),
+                                  SnackBar(
+                                    content: Text(l10n.copiedToClipboard),
                                     behavior: SnackBarBehavior.floating,
-                                    duration: Duration(seconds: 1),
+                                    duration: const Duration(seconds: 1),
                                   ),
                                 );
                               },
                               icon: const Icon(Icons.copy, size: 18),
-                              label: const Text('复制地址'),
+                              label: Text(l10n.wifiTransferCopyUrl),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: const BorderSide(
@@ -606,7 +607,7 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                                   color: Colors.green.shade400, size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                '已接收 $_receivedCount 个文件',
+                                l10n.wifiTransferReceivedCount(_receivedCount),
                                 style: TextStyle(
                                   color: Colors.green.shade300,
                                   fontWeight: FontWeight.w600,

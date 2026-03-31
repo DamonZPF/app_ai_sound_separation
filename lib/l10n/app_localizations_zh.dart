@@ -354,4 +354,54 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorMissingParams => '缺少上传参数';
+
+  @override
+  String get stemNameVocals => '提取人声与伴奏';
+
+  @override
+  String get stemNameNoise => '去除背景噪音';
+
+  @override
+  String get stemNameDrums => '提取鼓点音轨';
+
+  @override
+  String get stemNameBass => '提取贝斯音轨';
+
+  @override
+  String get stemNameAcoustic => '提取原声吉他音轨';
+
+  @override
+  String get stemNameElectric => '提取电吉他音轨';
+
+  @override
+  String get stemNamePiano => '提取钢琴音轨';
+
+  @override
+  String get stemNameSynth => '提取合成器音轨';
+
+  @override
+  String get stemNameStrings => '提取弦乐音轨';
+
+  @override
+  String get stemNameWind => '提取管乐器音轨';
+
+  @override
+  String get errorPickAudioFailed => '选取音频失败';
+
+  @override
+  String get wifiTransferOpenInBrowser => '在电脑浏览器中输入';
+
+  @override
+  String get copiedToClipboard => '已复制到剪贴板';
+
+  @override
+  String get wifiTransferCopyUrl => '复制地址';
+
+  @override
+  String wifiTransferReceivedCount(Object count) {
+    return '已接收 $count 个文件';
+  }
+
+  @override
+  String get mineNotLoggedIn => '未登录';
 }

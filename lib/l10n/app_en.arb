@@ -119,5 +119,28 @@
   "errorProcessingFailed": "Processing failed",
   "errorProcessingTimeout": "Processing timed out",
   "errorUploadInterrupted": "Upload interrupted, please retry",
-  "errorMissingParams": "Missing upload parameters"
+  "errorMissingParams": "Missing upload parameters",
+
+  "stemNameVocals": "Extract Vocals & Accompaniment",
+  "stemNameNoise": "Remove Background Noise",
+  "stemNameDrums": "Extract Drums",
+  "stemNameBass": "Extract Bass",
+  "stemNameAcoustic": "Extract Acoustic Guitar",
+  "stemNameElectric": "Extract Electric Guitar",
+  "stemNamePiano": "Extract Piano",
+  "stemNameSynth": "Extract Synthesizer",
+  "stemNameStrings": "Extract Strings",
+  "stemNameWind": "Extract Wind Instruments",
+
+  "errorPickAudioFailed": "Failed to pick audio",
+  "wifiTransferOpenInBrowser": "Open in your computer browser",
+  "copiedToClipboard": "Copied to clipboard",
+  "wifiTransferCopyUrl": "Copy URL",
+  "wifiTransferReceivedCount": "{count} file(s) received",
+  "@wifiTransferReceivedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "mineNotLoggedIn": "Not logged in"
 }

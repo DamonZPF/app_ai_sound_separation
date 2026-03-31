@@ -366,4 +366,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorMissingParams => 'Missing upload parameters';
+
+  @override
+  String get stemNameVocals => 'Extract Vocals & Accompaniment';
+
+  @override
+  String get stemNameNoise => 'Remove Background Noise';
+
+  @override
+  String get stemNameDrums => 'Extract Drums';
+
+  @override
+  String get stemNameBass => 'Extract Bass';
+
+  @override
+  String get stemNameAcoustic => 'Extract Acoustic Guitar';
+
+  @override
+  String get stemNameElectric => 'Extract Electric Guitar';
+
+  @override
+  String get stemNamePiano => 'Extract Piano';
+
+  @override
+  String get stemNameSynth => 'Extract Synthesizer';
+
+  @override
+  String get stemNameStrings => 'Extract Strings';
+
+  @override
+  String get stemNameWind => 'Extract Wind Instruments';
+
+  @override
+  String get errorPickAudioFailed => 'Failed to pick audio';
+
+  @override
+  String get wifiTransferOpenInBrowser => 'Open in your computer browser';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get wifiTransferCopyUrl => 'Copy URL';
+
+  @override
+  String wifiTransferReceivedCount(Object count) {
+    return '$count file(s) received';
+  }
+
+  @override
+  String get mineNotLoggedIn => 'Not logged in';
 }

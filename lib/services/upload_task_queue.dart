@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/stem_task.dart';
 import 'stem_api_service.dart';
 import 'pending_task_store.dart';
+import '../l10n/app_localizations.dart';
 
 class UploadTaskQueue {
   UploadTaskQueue._();
@@ -83,7 +84,7 @@ class UploadTaskQueue {
             status: 'failed',
             createdAt: task.createdAt,
             progress: task.progress,
-            errorMessage: '上传已中断，请重试',
+            errorMessage: 'error_upload_interrupted',
             uploadParams: task.uploadParams,
           );
         }
@@ -195,7 +196,7 @@ class UploadTaskQueue {
     // 检查文件是否存在
     final filePath = task.uploadParams?.filePath ?? '';
     if (filePath.isNotEmpty && !filePath.startsWith('http') && !File(filePath).existsSync()) {
-      _markFailed(localId, '文件已被清理，请重新选择文件上传');
+      _markFailed(localId, 'error_file_not_found');
       return;
     }
 
@@ -308,7 +309,7 @@ class UploadTaskQueue {
 
     final params = task.uploadParams;
     if (params == null) {
-      _markFailed(localId, '缺少上传参数');
+      _markFailed(localId, 'error_missing_params');
       return;
     }
 
@@ -396,14 +397,14 @@ class UploadTaskQueue {
       _stopSimulatedProgress(localId);
 
       if (result == null) {
-        _markFailed(localId, '处理超时');
+        _markFailed(localId, 'error_processing_timeout');
         // 超时也从持久化层移除
         await PendingTaskStore.instance.removeTask(stemTaskId);
         return;
       }
 
       if (result.isFailed) {
-        _markFailed(localId, result.errorMessage ?? '处理失败');
+        _markFailed(localId, result.errorMessage ?? 'error_processing_failed');
         // 失败也从持久化层移除
         await PendingTaskStore.instance.removeTask(stemTaskId);
         return;
@@ -515,30 +516,49 @@ class UploadTaskQueue {
         ), persist: true);
   }
 
-  /// 将技术错误消息转换为用户可读的描述
+  /// 将技术错误消息转换为 error key（UI 层通过 AppLocalizations 翻译）
   String _friendlyErrorMessage(String raw) {
     final lower = raw.toLowerCase();
     if (lower.contains('network connection was lost') ||
         lower.contains('networkconnectionlost')) {
-      return '网络连接中断，请检查网络后重试';
+      return 'error_network_lost';
     }
     if (lower.contains('timed out') || lower.contains('timeout')) {
-      return '上传超时，请检查网络后重试';
+      return 'error_timeout';
     }
     if (lower.contains('no internet') || lower.contains('not connected')) {
-      return '无网络连接，请检查网络设置';
+      return 'error_no_internet';
     }
     if (lower.contains('server') && lower.contains('500')) {
-      return '服务器异常，请稍后重试';
+      return 'error_server_error';
     }
     if (lower.contains('file') && (lower.contains('not found') || lower.contains('no such'))) {
-      return '文件已被清理，请重新选择文件上传';
+      return 'error_file_not_found';
     }
     // 截断过长的技术消息
     if (raw.length > 80) {
-      return '上传失败，请重试';
+      return 'error_upload_failed';
     }
     return raw;
+  }
+
+  /// 将 error key 翻译为当前语言的用户可读文本
+  /// 在 UI 层有 BuildContext 时调用
+  static String localizeError(String? errorKey, AppLocalizations l10n) {
+    if (errorKey == null) return '';
+    switch (errorKey) {
+      case 'error_network_lost': return l10n.errorNetworkLost;
+      case 'error_timeout': return l10n.errorTimeout;
+      case 'error_no_internet': return l10n.errorNoInternet;
+      case 'error_server_error': return l10n.errorServerError;
+      case 'error_file_not_found': return l10n.errorFileNotFound;
+      case 'error_upload_failed': return l10n.errorUploadFailed;
+      case 'error_processing_failed': return l10n.errorProcessingFailed;
+      case 'error_processing_timeout': return l10n.errorProcessingTimeout;
+      case 'error_upload_interrupted': return l10n.errorUploadInterrupted;
+      case 'error_missing_params': return l10n.errorMissingParams;
+      default: return errorKey; // 未匹配的直接显示原文
+    }
   }
 
   /// P1: persist 参数控制是否写磁盘

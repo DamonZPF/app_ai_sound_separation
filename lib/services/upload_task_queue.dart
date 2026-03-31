@@ -211,9 +211,15 @@ class UploadTaskQueue {
       return;
     }
 
+    // 清除旧的 PendingTaskStore 记录（如果有的话）
+    if (task.serverStemTaskId != null && task.serverStemTaskId!.isNotEmpty) {
+      PendingTaskStore.instance.removeTask(task.serverStemTaskId!);
+    }
+
+    // 重置状态：必须清空 serverStemTaskId，避免重新上传后 ID 冲突
     _updateTask(localId, (t) => StemTask(
           stemTaskId: t.stemTaskId,
-          serverStemTaskId: t.serverStemTaskId,
+          serverStemTaskId: null,  // 重试 = 重新上传，旧的 server ID 无效
           trackTitle: t.trackTitle,
           stem: t.stem,
           status: 'uploading',
@@ -281,6 +287,12 @@ class UploadTaskQueue {
   void markCompleted(String serverTaskId) {
     final localId = _findLocalIdByServerTaskId(serverTaskId);
     if (localId != null) {
+      // 先取出文件路径，再更新状态（避免先更新后找不到）
+      final filePathToClean = tasks
+          .firstWhere((t) => t.stemTaskId == localId,
+              orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''))
+          .uploadParams?.filePath;
+
       _updateTask(localId, (t) => StemTask(
             stemTaskId: t.stemTaskId,
             serverStemTaskId: t.serverStemTaskId,
@@ -291,10 +303,7 @@ class UploadTaskQueue {
             progress: 100,
             uploadParams: t.uploadParams,
           ));
-      _cleanupPersistedFile(
-          tasks.firstWhere((t) => t.stemTaskId == localId,
-              orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''))
-          .uploadParams?.filePath);
+      _cleanupPersistedFile(filePathToClean);
       _stopSimulatedProgress(localId);
       _persist();
       _scheduleAutoRemove(localId);
@@ -425,12 +434,12 @@ class UploadTaskQueue {
         return;
       }
 
-      // 完成 — 清理持久化文件 + 更新状态
-      final completedTask = tasks.firstWhere(
+      // 完成 — 先取路径再更新状态
+      final filePathToClean = tasks.firstWhere(
         (t) => t.stemTaskId == localId,
         orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: 'unknown', createdAt: ''),
-      );
-      _cleanupPersistedFile(completedTask.uploadParams?.filePath);
+      ).uploadParams?.filePath;
+      _cleanupPersistedFile(filePathToClean);
       _lastNotifiedProgress.remove(localId);
 
       _updateTask(localId, (t) => StemTask(
@@ -551,7 +560,12 @@ class UploadTaskQueue {
         return;
       }
 
-      // 完成
+      // 完成 — 先取路径再更新状态
+      final filePathToClean = tasks.firstWhere(
+        (t) => t.stemTaskId == localId,
+        orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''),
+      ).uploadParams?.filePath;
+
       _lastNotifiedProgress.remove(localId);
       _updateTask(localId, (t) => StemTask(
             stemTaskId: t.stemTaskId,
@@ -566,10 +580,7 @@ class UploadTaskQueue {
           ), persist: true);
 
       await PendingTaskStore.instance.removeTask(stemTaskId);
-      _cleanupPersistedFile(
-          tasks.firstWhere((t) => t.stemTaskId == localId,
-              orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''))
-          .uploadParams?.filePath);
+      _cleanupPersistedFile(filePathToClean);
       debugPrint('[TaskQueue] ✅ 恢复任务完成: $localId');
       _scheduleAutoRemove(localId);
     } catch (e) {

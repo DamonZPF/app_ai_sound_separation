@@ -249,7 +249,7 @@ class StemApiService {
             stem: data['stem']?.toString() ?? '',
             status: 'failed',
             createdAt: data['created_at']?.toString() ?? '',
-            errorMessage: data['error']?.toString() ?? '处理失败',
+            errorMessage: data['error']?.toString() ?? 'error_processing_failed',
           );
         }
       } catch (e) {

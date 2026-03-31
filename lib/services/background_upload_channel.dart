@@ -60,12 +60,12 @@ class BackgroundUploadChannel {
           final stemTaskId =
               data['stem_task_id']?.toString() ?? data['task_id']?.toString() ?? '';
           if (stemTaskId.isEmpty) {
-            completer.completeError(Exception('服务器未返回 stem_task_id'));
+            completer.completeError(Exception('Server did not return stem_task_id'));
           } else {
             completer.complete(stemTaskId);
           }
         } catch (e) {
-          completer.completeError(Exception('解析响应失败: $e'));
+          completer.completeError(Exception('Failed to parse response: $e'));
         }
         _callbacks.remove(uploadId);
       },
@@ -174,12 +174,12 @@ class BackgroundUploadChannel {
           final data = json.decode(body) as Map<String, dynamic>;
           final stemTaskId = data['stem_task_id']?.toString() ?? '';
           if (stemTaskId.isEmpty) {
-            completer.completeError(Exception('合并响应未返回 stem_task_id'));
+            completer.completeError(Exception('Merge response missing stem_task_id'));
           } else {
             completer.complete(stemTaskId);
           }
         } catch (e) {
-          completer.completeError(Exception('解析合并响应失败: $e'));
+          completer.completeError(Exception('Failed to parse merge response: $e'));
         }
         _callbacks.remove(mergeUploadId);
       },
@@ -253,7 +253,7 @@ class BackgroundUploadChannel {
         break;
 
       case 'error':
-        final error = map['error'] as String? ?? '未知错误';
+        final error = map['error'] as String? ?? 'Unknown error';
         final isRetryable = map['isRetryable'] as bool? ?? false;
         debugPrint('[BGUpload] ${isRetryable ? "⚠️" : "❌"} 错误回调: uploadId=$uploadId, error=$error, retryable=$isRetryable');
         callbacks.onError?.call(error);

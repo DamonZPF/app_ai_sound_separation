@@ -94,6 +94,17 @@ class UploadTaskQueue {
       tasksNotifier.value = restored;
       await _persist();
       debugPrint('[TaskQueue] ♻️ 恢复 ${restored.length} 个队列任务');
+
+      // P0: 自动恢复 processing 状态任务的轮询
+      // P3: 同时启动模拟进度，避免恢复后进度条静止
+      // P4: 走独立的恢复轮询（_resumeProcessingTask），不走 _processTask
+      for (final task in restored) {
+        if (task.status == 'processing' && task.serverStemTaskId != null && task.serverStemTaskId!.isNotEmpty) {
+          debugPrint('[TaskQueue] 🔄 自动恢复轮询: ${task.stemTaskId} (server: ${task.serverStemTaskId})');
+          _startSimulatedProgress(task.stemTaskId, startFrom: task.progress > 0 ? task.progress : 50);
+          _resumeProcessingTask(task.stemTaskId, task.serverStemTaskId!);
+        }
+      }
     } catch (e) {
       debugPrint('[TaskQueue] 恢复失败: $e');
     }
@@ -284,7 +295,9 @@ class UploadTaskQueue {
           tasks.firstWhere((t) => t.stemTaskId == localId,
               orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''))
           .uploadParams?.filePath);
+      _stopSimulatedProgress(localId);
       _persist();
+      _scheduleAutoRemove(localId);
     }
   }
 
@@ -345,6 +358,7 @@ class UploadTaskQueue {
       // 取消检查：用户可能在上传过程中删除了任务
       if (_removedTaskIds.contains(localId)) {
         debugPrint('[TaskQueue] ⏹ 任务已被用户删除，停止处理: $localId');
+        _removedTaskIds.remove(localId); // P5: 清理
         return;
       }
 
@@ -381,6 +395,7 @@ class UploadTaskQueue {
       // 取消检查：轮询前确认任务未被删除
       if (_removedTaskIds.contains(localId)) {
         debugPrint('[TaskQueue] ⏹ 任务已被用户删除，停止轮询: $localId');
+        _removedTaskIds.remove(localId); // P5: 清理
         return;
       }
 
@@ -433,10 +448,14 @@ class UploadTaskQueue {
       // 完成后从持久化层移除
       await PendingTaskStore.instance.removeTask(stemTaskId);
       debugPrint('[TaskQueue] ✅ 任务完成: $localId');
+
+      // P2: 延迟自动从本地队列清除（避免与远程历史重复）
+      _scheduleAutoRemove(localId);
     } catch (e) {
       _stopSimulatedProgress(localId);
       if (_removedTaskIds.contains(localId)) {
         debugPrint('[TaskQueue] ⏹ 任务已被用户删除，忽略异常: $localId');
+        _removedTaskIds.remove(localId); // P5: 清理
         return;
       }
       debugPrint('[TaskQueue] ❌ 处理失败: $localId, $e');
@@ -499,6 +518,82 @@ class UploadTaskQueue {
   void _stopSimulatedProgress(String localId) {
     _simulatedProgressTimers[localId]?.cancel();
     _simulatedProgressTimers.remove(localId);
+  }
+
+  /// P0+P4: Kill App 后恢复 processing 任务的独立轮询
+  /// 不走 _processTask（那个会重新上传），只做轮询
+  Future<void> _resumeProcessingTask(String localId, String stemTaskId) async {
+    try {
+      final result = await _api.pollTask(
+        stemTaskId,
+        onProgress: (p) {
+          if (_removedTaskIds.contains(localId)) return;
+          _updateProgress(localId, p);
+        },
+      );
+
+      _stopSimulatedProgress(localId);
+
+      if (_removedTaskIds.contains(localId)) {
+        _removedTaskIds.remove(localId);
+        return;
+      }
+
+      if (result == null) {
+        _markFailed(localId, 'error_processing_timeout');
+        await PendingTaskStore.instance.removeTask(stemTaskId);
+        return;
+      }
+
+      if (result.isFailed) {
+        _markFailed(localId, result.errorMessage ?? 'error_processing_failed');
+        await PendingTaskStore.instance.removeTask(stemTaskId);
+        return;
+      }
+
+      // 完成
+      _lastNotifiedProgress.remove(localId);
+      _updateTask(localId, (t) => StemTask(
+            stemTaskId: t.stemTaskId,
+            serverStemTaskId: t.serverStemTaskId,
+            trackTitle: result.trackTitle,
+            stem: result.stem,
+            status: 'completed',
+            createdAt: result.createdAt,
+            progress: 100,
+            uploadParams: t.uploadParams,
+            results: result.results,
+          ), persist: true);
+
+      await PendingTaskStore.instance.removeTask(stemTaskId);
+      _cleanupPersistedFile(
+          tasks.firstWhere((t) => t.stemTaskId == localId,
+              orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: '', createdAt: ''))
+          .uploadParams?.filePath);
+      debugPrint('[TaskQueue] ✅ 恢复任务完成: $localId');
+      _scheduleAutoRemove(localId);
+    } catch (e) {
+      _stopSimulatedProgress(localId);
+      if (_removedTaskIds.contains(localId)) {
+        _removedTaskIds.remove(localId);
+        return;
+      }
+      debugPrint('[TaskQueue] ❌ 恢复任务轮询失败: $localId, $e');
+      _markFailed(localId, _friendlyErrorMessage(e.toString()));
+    }
+  }
+
+  /// P2: 任务完成后延迟自动从本地队列清除（给 UI 过渡时间）
+  void _scheduleAutoRemove(String localId) {
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      final still = tasks.any((t) => t.stemTaskId == localId && t.isCompleted);
+      if (still) {
+        tasksNotifier.value = tasks.where((t) => t.stemTaskId != localId).toList();
+        _lastNotifiedProgress.remove(localId);
+        _persist();
+        debugPrint('[TaskQueue] 🧹 自动清除已完成任务: $localId');
+      }
+    });
   }
 
   void _markFailed(String localId, String error) {

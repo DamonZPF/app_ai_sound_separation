@@ -207,7 +207,7 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
           if (status == 'completed') {
             _queue.markCompleted(task.stemTaskId);
           } else {
-            _queue.markFailed(task.stemTaskId, data['error']?.toString() ?? '处理失败');
+            _queue.markFailed(task.stemTaskId, data['error']?.toString() ?? 'error_processing_failed');
           }
         }
       } catch (e) {

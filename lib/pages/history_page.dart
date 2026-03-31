@@ -554,13 +554,14 @@ class _QueueTaskCard extends StatelessWidget {
                     label: Text(l10n.historyRetry,
                         style: const TextStyle(fontSize: 12)),
                   ),
-                TextButton.icon(
-                  onPressed: onRemove,
-                  icon:
-                      Icon(Icons.close, size: 18, color: Colors.grey),
-                  label: Text(l10n.historyDelete,
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ),
+                if (isFailed)
+                  TextButton.icon(
+                    onPressed: onRemove,
+                    icon:
+                        Icon(Icons.close, size: 18, color: Colors.grey),
+                    label: Text(l10n.historyDelete,
+                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  ),
               ],
             ),
           ],

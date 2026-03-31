@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/stem_task.dart';
 import 'stem_api_service.dart';
 import 'pending_task_store.dart';
@@ -40,6 +41,19 @@ class UploadTaskQueue {
 
   /// 已被用户删除的任务 ID 集合（用于终止残留的 _processTask 异步操作）
   final Set<String> _removedTaskIds = {};
+
+  /// 最大并发上传数
+  static const int _maxConcurrentUploads = 2;
+
+  /// 当前正在处理的任务 ID 集合
+  final Set<String> _processingTaskIds = {};
+
+  /// 等待执行的任务 ID 队列
+  final List<String> _pendingQueue = [];
+
+  /// 网络状态
+  bool _hasNetwork = true;
+  StreamSubscription? _connectivitySub;
 
   /// 初始化：从持久化存储恢复队列
   Future<void> init() async {
@@ -107,6 +121,38 @@ class UploadTaskQueue {
       }
     } catch (e) {
       debugPrint('[TaskQueue] 恢复失败: $e');
+    }
+
+    // 启动网络状态监听
+    _startNetworkMonitor();
+  }
+
+  /// 监听网络状态变化
+  void _startNetworkMonitor() {
+    _connectivitySub?.cancel();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
+      final connected = results.any((r) => r != ConnectivityResult.none);
+      if (connected && !_hasNetwork) {
+        // 网络恢复 → 自动重试失败的任务
+        _hasNetwork = true;
+        debugPrint('[TaskQueue] 📶 网络恢复，检查待重试任务...');
+        _retryFailedTasksOnNetworkRestore();
+        _drainPendingQueue();
+      } else if (!connected && _hasNetwork) {
+        _hasNetwork = false;
+        debugPrint('[TaskQueue] 📵 网络断开');
+      }
+    });
+  }
+
+  /// 网络恢复时自动重试因网络原因失败的任务
+  void _retryFailedTasksOnNetworkRestore() {
+    final networkErrors = {'error_network_lost', 'error_timeout', 'error_no_internet'};
+    for (final task in List.of(tasks)) {
+      if (task.isFailed && networkErrors.contains(task.errorMessage)) {
+        debugPrint('[TaskQueue] 🔄 网络恢复自动重试: ${task.stemTaskId}');
+        retryTask(task.stemTaskId);
+      }
     }
   }
 
@@ -191,8 +237,19 @@ class UploadTaskQueue {
     return localId;
   }
 
-  /// 后台启动处理（上传 + 轮询），调用后立即返回
+  /// 后台启动处理（上传 + 轮询），受并发限制
   void startProcessing(String localId) {
+    if (!_hasNetwork) {
+      debugPrint('[TaskQueue] 📵 无网络，标记失败: $localId');
+      _markFailed(localId, 'error_no_internet');
+      return;
+    }
+    if (_processingTaskIds.length >= _maxConcurrentUploads) {
+      debugPrint('[TaskQueue] ⏳ 并发已满 ($_maxConcurrentUploads)，排队: $localId');
+      if (!_pendingQueue.contains(localId)) _pendingQueue.add(localId);
+      return;
+    }
+    _processingTaskIds.add(localId);
     _processTask(localId);
   }
 
@@ -228,7 +285,7 @@ class UploadTaskQueue {
           errorMessage: null,
           uploadParams: t.uploadParams,
         ));
-    _processTask(localId);
+    startProcessing(localId);
   }
 
   /// 移除本地任务（同时清理持久化文件、模拟进度、PendingTaskStore）
@@ -240,6 +297,10 @@ class UploadTaskQueue {
 
     // 标记为已删除，终止残留的 _processTask 异步操作
     _removedTaskIds.add(localId);
+
+    // 从并发/等待队列中清除
+    _processingTaskIds.remove(localId);
+    _pendingQueue.remove(localId);
 
     // 停止模拟进度定时器
     _stopSimulatedProgress(localId);
@@ -368,6 +429,7 @@ class UploadTaskQueue {
       if (_removedTaskIds.contains(localId)) {
         debugPrint('[TaskQueue] ⏹ 任务已被用户删除，停止处理: $localId');
         _removedTaskIds.remove(localId); // P5: 清理
+        _onTaskFinished(localId);
         return;
       }
 
@@ -405,6 +467,7 @@ class UploadTaskQueue {
       if (_removedTaskIds.contains(localId)) {
         debugPrint('[TaskQueue] ⏹ 任务已被用户删除，停止轮询: $localId');
         _removedTaskIds.remove(localId); // P5: 清理
+        _onTaskFinished(localId);
         return;
       }
 
@@ -424,6 +487,7 @@ class UploadTaskQueue {
         _markFailed(localId, 'error_processing_timeout');
         // 超时也从持久化层移除
         await PendingTaskStore.instance.removeTask(stemTaskId);
+        _onTaskFinished(localId);
         return;
       }
 
@@ -431,6 +495,7 @@ class UploadTaskQueue {
         _markFailed(localId, result.errorMessage ?? 'error_processing_failed');
         // 失败也从持久化层移除
         await PendingTaskStore.instance.removeTask(stemTaskId);
+        _onTaskFinished(localId);
         return;
       }
 
@@ -460,6 +525,7 @@ class UploadTaskQueue {
 
       // P2: 延迟自动从本地队列清除（避免与远程历史重复）
       _scheduleAutoRemove(localId);
+      _onTaskFinished(localId);
     } catch (e) {
       _stopSimulatedProgress(localId);
       if (_removedTaskIds.contains(localId)) {
@@ -469,6 +535,27 @@ class UploadTaskQueue {
       }
       debugPrint('[TaskQueue] ❌ 处理失败: $localId, $e');
       _markFailed(localId, _friendlyErrorMessage(e.toString()));
+      _onTaskFinished(localId);
+    }
+  }
+
+  /// 任务结束时释放并发槽位 + 触发排水
+  void _onTaskFinished(String localId) {
+    _processingTaskIds.remove(localId);
+    _drainPendingQueue();
+  }
+
+  /// 从等待队列中取出任务执行（FIFO）
+  void _drainPendingQueue() {
+    while (_pendingQueue.isNotEmpty && _processingTaskIds.length < _maxConcurrentUploads) {
+      final nextId = _pendingQueue.removeAt(0);
+      // 确认任务仍存在且需要处理
+      final exists = tasks.any((t) => t.stemTaskId == nextId && t.status == 'uploading');
+      if (exists && !_removedTaskIds.contains(nextId)) {
+        debugPrint('[TaskQueue] ▶️ 从队列取出执行: $nextId');
+        _processingTaskIds.add(nextId);
+        _processTask(nextId);
+      }
     }
   }
 

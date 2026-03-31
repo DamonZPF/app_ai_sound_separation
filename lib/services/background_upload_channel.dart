@@ -225,7 +225,7 @@ class BackgroundUploadChannel {
 
   void _handleEvent(dynamic event) {
     if (event is! Map) return;
-    final map = Map<String, dynamic>.from(event as Map);
+    final map = Map<String, dynamic>.from(event);
 
     final type = map['type'] as String? ?? '';
     final uploadId = map['uploadId'] as String? ?? '';

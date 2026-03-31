@@ -808,7 +808,7 @@ class UploadTaskQueue {
     }
 
     final ext = srcPath.contains('.') ? srcPath.substring(srcPath.lastIndexOf('.')) : '';
-    final destPath = '${uploadsDir.path}/${localId}$ext';
+    final destPath = '${uploadsDir.path}/$localId$ext';
     final dest = await src.copy(destPath);
     debugPrint('[TaskQueue] 📁 文件已复制: ${src.path} → ${dest.path}');
     return dest.path;

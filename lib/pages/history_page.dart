@@ -74,7 +74,7 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
   final _pendingStore = PendingTaskStore.instance;
 
   List<_HistoryGroup> _groups = [];
-  bool _loading = false;
+  final bool _loading = false;
 
   /// 分页状态
   int _currentPage = 1;
@@ -353,7 +353,7 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: itemCount,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       // 队列任务在前
                       if (i < activeTasks.length) {

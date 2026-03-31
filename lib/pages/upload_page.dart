@@ -426,7 +426,7 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
         ],
       ),
     ).then((startNow) {
-      if (startNow == true) {
+      if (startNow == true && mounted) {
         // 关闭 WiFi 页面，跳转历史页
         _lanService.onFileReceived = null;
         _lanService.stop();

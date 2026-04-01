@@ -57,14 +57,9 @@
   "historyRetry": "重试",
   "historyAllLoaded": "已全部加载",
   "mineTitle": "我的",
-  "mineAnonymousUser": "匿名用户",
-  "mineUserId": "用户ID",
-  "mineUsageGuide": "使用须知",
-  "mineAbout": "关于",
-  "mineVersion": "版本",
-  "mineLanguage": "语言",
-  "mineChinese": "中文",
-  "mineEnglish": "English",
+  "mineTermsOfService": "用户协议",
+  "minePrivacyPolicy": "隐私政策",
+  "mineFaq": "常见问题",
   "confirm": "确认",
   "cancel": "取消",
   "ok": "好的",
@@ -145,7 +140,7 @@
       "count": {}
     }
   },
-  "mineNotLoggedIn": "未登录",
+
 
   "permissionDeniedTitle": "需要访问权限",
   "permissionPhotoDenied": "需要相册访问权限才能选择视频文件",

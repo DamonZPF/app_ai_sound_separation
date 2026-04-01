@@ -57,14 +57,9 @@
   "historyRetry": "Retry",
   "historyAllLoaded": "All loaded",
   "mineTitle": "Me",
-  "mineAnonymousUser": "Anonymous User",
-  "mineUserId": "User ID",
-  "mineUsageGuide": "Usage Guide",
-  "mineAbout": "About",
-  "mineVersion": "Version",
-  "mineLanguage": "Language",
-  "mineChinese": "中文",
-  "mineEnglish": "English",
+  "mineTermsOfService": "Terms of Service",
+  "minePrivacyPolicy": "Privacy Policy",
+  "mineFaq": "FAQ",
   "confirm": "Confirm",
   "cancel": "Cancel",
   "ok": "OK",
@@ -145,7 +140,7 @@
       "count": {}
     }
   },
-  "mineNotLoggedIn": "Not logged in",
+
 
   "permissionDeniedTitle": "Permission Required",
   "permissionPhotoDenied": "Photo library access is required to select video files",

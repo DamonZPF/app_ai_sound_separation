@@ -440,53 +440,23 @@ abstract class AppLocalizations {
   /// **'我的'**
   String get mineTitle;
 
-  /// No description provided for @mineAnonymousUser.
+  /// No description provided for @mineTermsOfService.
   ///
   /// In zh, this message translates to:
-  /// **'匿名用户'**
-  String get mineAnonymousUser;
+  /// **'用户协议'**
+  String get mineTermsOfService;
 
-  /// No description provided for @mineUserId.
+  /// No description provided for @minePrivacyPolicy.
   ///
   /// In zh, this message translates to:
-  /// **'用户ID'**
-  String get mineUserId;
+  /// **'隐私政策'**
+  String get minePrivacyPolicy;
 
-  /// No description provided for @mineUsageGuide.
+  /// No description provided for @mineFaq.
   ///
   /// In zh, this message translates to:
-  /// **'使用须知'**
-  String get mineUsageGuide;
-
-  /// No description provided for @mineAbout.
-  ///
-  /// In zh, this message translates to:
-  /// **'关于'**
-  String get mineAbout;
-
-  /// No description provided for @mineVersion.
-  ///
-  /// In zh, this message translates to:
-  /// **'版本'**
-  String get mineVersion;
-
-  /// No description provided for @mineLanguage.
-  ///
-  /// In zh, this message translates to:
-  /// **'语言'**
-  String get mineLanguage;
-
-  /// No description provided for @mineChinese.
-  ///
-  /// In zh, this message translates to:
-  /// **'中文'**
-  String get mineChinese;
-
-  /// No description provided for @mineEnglish.
-  ///
-  /// In zh, this message translates to:
-  /// **'English'**
-  String get mineEnglish;
+  /// **'常见问题'**
+  String get mineFaq;
 
   /// No description provided for @confirm.
   ///
@@ -889,12 +859,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已接收 {count} 个文件'**
   String wifiTransferReceivedCount(Object count);
-
-  /// No description provided for @mineNotLoggedIn.
-  ///
-  /// In zh, this message translates to:
-  /// **'未登录'**
-  String get mineNotLoggedIn;
 
   /// No description provided for @permissionDeniedTitle.
   ///

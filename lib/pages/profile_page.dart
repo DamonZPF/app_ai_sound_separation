@@ -1,6 +1,6 @@
+// 我的页面 — 用户协议、隐私政策、常见问题
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
-import '../services/supabase_service.dart';
 import 'webview_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -9,85 +9,51 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final userId = getCachedUserId() ?? '';
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.mineTitle)),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         children: [
-          // ─── 用户头像区 ───
-          Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  child: Icon(Icons.person,
-                      size: 40, color: theme.colorScheme.primary),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  userId.isNotEmpty ? '${userId.substring(0, 8)}...' : l10n.mineNotLoggedIn,
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.mineAnonymousUser,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
+          _MenuItem(
+            icon: Icons.description_outlined,
+            title: l10n.mineTermsOfService,
+            onTap: () => _openWebView(
+              context,
+              title: l10n.mineTermsOfService,
+              url: 'https://miniapp.brightworld.work/user_agreement',
             ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // ─── 菜单项 ───
-          _MenuItem(
-            icon: Icons.info_outline,
-            title: l10n.mineAbout,
-            onTap: () => _showAbout(context, l10n),
-          ),
-          _MenuItem(
-            icon: Icons.language,
-            title: l10n.mineLanguage,
-            onTap: () {
-              // TODO: 语言切换
-            },
           ),
           _MenuItem(
             icon: Icons.privacy_tip_outlined,
-            title: l10n.mineUsageGuide,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => WebViewPage(
-                    url: 'https://miniapp.brightworld.work/user_agreement',
-                    title: l10n.mineUsageGuide,
-                  ),
-                ),
-              );
-            },
+            title: l10n.minePrivacyPolicy,
+            onTap: () => _openWebView(
+              context,
+              title: l10n.minePrivacyPolicy,
+              url: 'https://miniapp.brightworld.work/privacy_policy',
+            ),
+          ),
+          _MenuItem(
+            icon: Icons.help_outline,
+            title: l10n.mineFaq,
+            onTap: () => _openWebView(
+              context,
+              title: l10n.mineFaq,
+              url: 'https://miniapp.brightworld.work/faq',
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showAbout(BuildContext context, AppLocalizations l10n) {
-    showAboutDialog(
-      context: context,
-      applicationName: l10n.homeTitle,
-      applicationVersion: '1.0.0',
-      applicationLegalese: '© 2024 AI Sound Separation',
-      children: [
-        const SizedBox(height: 16),
-        Text(l10n.homeSubtitle),
-      ],
+  void _openWebView(BuildContext context,
+      {required String title, required String url}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WebViewPage(url: url, title: title),
+      ),
     );
   }
 }

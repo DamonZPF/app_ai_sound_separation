@@ -182,28 +182,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mineTitle => '我的';
 
   @override
-  String get mineAnonymousUser => '匿名用户';
+  String get mineTermsOfService => '用户协议';
 
   @override
-  String get mineUserId => '用户ID';
+  String get minePrivacyPolicy => '隐私政策';
 
   @override
-  String get mineUsageGuide => '使用须知';
-
-  @override
-  String get mineAbout => '关于';
-
-  @override
-  String get mineVersion => '版本';
-
-  @override
-  String get mineLanguage => '语言';
-
-  @override
-  String get mineChinese => '中文';
-
-  @override
-  String get mineEnglish => 'English';
+  String get mineFaq => '常见问题';
 
   @override
   String get confirm => '确认';
@@ -410,9 +395,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String wifiTransferReceivedCount(Object count) {
     return '已接收 $count 个文件';
   }
-
-  @override
-  String get mineNotLoggedIn => '未登录';
 
   @override
   String get permissionDeniedTitle => '需要访问权限';

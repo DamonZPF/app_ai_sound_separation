@@ -187,28 +187,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mineTitle => 'Me';
 
   @override
-  String get mineAnonymousUser => 'Anonymous User';
+  String get mineTermsOfService => 'Terms of Service';
 
   @override
-  String get mineUserId => 'User ID';
+  String get minePrivacyPolicy => 'Privacy Policy';
 
   @override
-  String get mineUsageGuide => 'Usage Guide';
-
-  @override
-  String get mineAbout => 'About';
-
-  @override
-  String get mineVersion => 'Version';
-
-  @override
-  String get mineLanguage => 'Language';
-
-  @override
-  String get mineChinese => '中文';
-
-  @override
-  String get mineEnglish => 'English';
+  String get mineFaq => 'FAQ';
 
   @override
   String get confirm => 'Confirm';
@@ -423,9 +408,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String wifiTransferReceivedCount(Object count) {
     return '$count file(s) received';
   }
-
-  @override
-  String get mineNotLoggedIn => 'Not logged in';
 
   @override
   String get permissionDeniedTitle => 'Permission Required';

@@ -101,14 +101,15 @@
   "wifiTransferNoWifi": "未连接 WiFi，无法启动传输服务",
   "wifiTransferClose": "关闭传输",
   "wifiTransferFileReceived": "文件已接收",
-  "wifiTransferFileReceivedMsg": "「{fileName}」已加入任务队列。\n\n你可以继续传输更多文件，或查看任务进度。",
+  "wifiTransferFileReceivedMsg": "「{fileName}」已接收完成。\n\n是否立即开始分离任务？",
   "@wifiTransferFileReceivedMsg": {
     "placeholders": {
       "fileName": {}
     }
   },
-  "wifiTransferContinue": "继续传输",
-  "wifiTransferStartNow": "查看任务",
+  "wifiTransferContinue": "暂不执行",
+  "wifiTransferStartNow": "确认执行",
+  "wifiTransferMaxFiles": "请先处理已接收的文件",
 
   "errorNetworkLost": "网络连接中断，请检查网络后重试",
   "errorTimeout": "上传超时，请检查网络后重试",

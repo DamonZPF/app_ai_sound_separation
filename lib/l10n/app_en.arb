@@ -101,14 +101,15 @@
   "wifiTransferNoWifi": "Not connected to WiFi",
   "wifiTransferClose": "Stop Transfer",
   "wifiTransferFileReceived": "File Received",
-  "wifiTransferFileReceivedMsg": "\"{fileName}\" has been added to the task queue.\n\nYou can continue transferring more files, or view task progress.",
+  "wifiTransferFileReceivedMsg": "\"{fileName}\" has been received.\n\nWould you like to start the separation task now?",
   "@wifiTransferFileReceivedMsg": {
     "placeholders": {
       "fileName": {}
     }
   },
-  "wifiTransferContinue": "Continue Transfer",
-  "wifiTransferStartNow": "View Tasks",
+  "wifiTransferContinue": "Not Now",
+  "wifiTransferStartNow": "Confirm",
+  "wifiTransferMaxFiles": "Please process the received file first",
 
   "errorNetworkLost": "Network connection lost, please check and retry",
   "errorTimeout": "Upload timed out, please check network and retry",

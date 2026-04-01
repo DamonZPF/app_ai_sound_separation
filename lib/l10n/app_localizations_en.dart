@@ -325,14 +325,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String wifiTransferFileReceivedMsg(Object fileName) {
-    return '\"$fileName\" has been added to the task queue.\n\nYou can continue transferring more files, or view task progress.';
+    return '\"$fileName\" has been received.\n\nWould you like to start the separation task now?';
   }
 
   @override
-  String get wifiTransferContinue => 'Continue Transfer';
+  String get wifiTransferContinue => 'Not Now';
 
   @override
-  String get wifiTransferStartNow => 'View Tasks';
+  String get wifiTransferStartNow => 'Confirm';
+
+  @override
+  String get wifiTransferMaxFiles => 'Please process the received file first';
 
   @override
   String get errorNetworkLost =>

@@ -316,14 +316,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String wifiTransferFileReceivedMsg(Object fileName) {
-    return '「$fileName」已加入任务队列。\n\n你可以继续传输更多文件，或查看任务进度。';
+    return '「$fileName」已接收完成。\n\n是否立即开始分离任务？';
   }
 
   @override
-  String get wifiTransferContinue => '继续传输';
+  String get wifiTransferContinue => '暂不执行';
 
   @override
-  String get wifiTransferStartNow => '查看任务';
+  String get wifiTransferStartNow => '确认执行';
+
+  @override
+  String get wifiTransferMaxFiles => '请先处理已接收的文件';
 
   @override
   String get errorNetworkLost => '网络连接中断，请检查网络后重试';

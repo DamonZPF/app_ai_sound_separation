@@ -443,6 +443,7 @@ dropZone.addEventListener('drop', (e) => {
 
 fileInput.addEventListener('change', () => {
   if (fileInput.files.length > 0) uploadFile(fileInput.files[0]);
+  fileInput.value = ''; // 允许重复选择同一文件
 });
 
 function uploadFile(file) {

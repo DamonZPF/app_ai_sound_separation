@@ -1,5 +1,6 @@
 // 上传页面 — 五种来源选择入口
 // 对应截图设计：iTunes / 相机胶卷 / 文件 / 从 URL 导入 / WiFi 传输
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -367,7 +368,12 @@ class _WifiTransferPage extends StatefulWidget {
 class _WifiTransferPageState extends State<_WifiTransferPage> {
   final _lanService = LanUploadService.instance;
   bool _starting = false;
-  int _receivedCount = 0;
+
+  /// 当前待处理文件的路径（用于去重/覆盖）
+  String? _pendingFilePath;
+
+  /// 当前弹窗的 context，用于新文件到达时关闭旧弹窗
+  BuildContext? _dialogContext;
 
   @override
   void initState() {
@@ -387,11 +393,21 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
 
     _lanService.onFileReceived = (filePath, fileName) {
       if (!mounted) return;
-      setState(() => _receivedCount++);
-      widget.onFileReceived(filePath, fileName);
 
-      // 弹窗询问：继续传输还是开始分离
-      _showFileReceivedDialog(fileName);
+      // 只保留最新文件，删除旧的
+      if (_pendingFilePath != null && _pendingFilePath != filePath) {
+        try { File(_pendingFilePath!).deleteSync(); } catch (_) {}
+      }
+      _pendingFilePath = filePath;
+
+      // 关闭旧弹窗（如果有）
+      if (_dialogContext != null) {
+        Navigator.of(_dialogContext!).pop();
+        _dialogContext = null;
+      }
+
+      // 弹窗让用户确认是否执行分离任务
+      _showFileReceivedDialog(filePath, fileName);
     };
 
     final ok = await _lanService.start();
@@ -409,39 +425,46 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
     }
   }
 
-  /// 文件接收后弹窗：继续传输 or 开始分离
-  void _showFileReceivedDialog(String fileName) {
+  /// 文件接收后弹窗：确认执行 or 暂不执行
+  void _showFileReceivedDialog(String filePath, String fileName) {
     final l10n = AppLocalizations.of(context)!;
+
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        title: Text(l10n.wifiTransferFileReceived),
-        content: Text(
-          l10n.wifiTransferFileReceivedMsg(fileName),
-          style: const TextStyle(height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.wifiTransferContinue),
+      builder: (ctx) {
+        _dialogContext = ctx;
+        return AlertDialog(
+          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+          title: Text(l10n.wifiTransferFileReceived),
+          content: Text(
+            l10n.wifiTransferFileReceivedMsg(fileName),
+            style: const TextStyle(height: 1.5),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.wifiTransferStartNow),
-          ),
-        ],
-      ),
-    ).then((startNow) {
-      if (startNow == true && mounted) {
-        // 关闭 WiFi 页面，跳转历史页
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.wifiTransferContinue),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.wifiTransferStartNow),
+            ),
+          ],
+        );
+      },
+    ).then((confirmed) {
+      _dialogContext = null;
+      if (confirmed == true && mounted) {
+        // 用户确认 → 入队执行任务
+        widget.onFileReceived(filePath, fileName);
+        _pendingFilePath = null;
         _lanService.onFileReceived = null;
         _lanService.stop();
         Navigator.pop(context);
         widget.onGoHistory();
       }
-      // startNow == false: 保持 LAN 服务，继续等待更多文件
+      // 暂不执行 → 文件保留，下次上传新文件时自动覆盖
     });
   }
 
@@ -453,18 +476,6 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.wifiTransferTitle),
-        actions: [
-          if (_receivedCount > 0)
-            TextButton(
-              onPressed: () {
-                _lanService.onFileReceived = null;
-                _lanService.stop();
-                Navigator.pop(context);
-                widget.onGoHistory();
-              },
-              child: Text(l10n.wifiTransferStartNow),
-            ),
-        ],
       ),
       body: _starting
           ? const Center(child: CircularProgressIndicator())
@@ -594,35 +605,7 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 24),
 
-                      // ─── 已接收文件计数 ───
-                      if (_receivedCount > 0)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade900.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.green.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle,
-                                  color: Colors.green.shade400, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                l10n.wifiTransferReceivedCount(_receivedCount),
-                                style: TextStyle(
-                                  color: Colors.green.shade300,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
 
                       const SizedBox(height: 32),
 
@@ -634,10 +617,6 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                             _lanService.onFileReceived = null;
                             _lanService.stop();
                             Navigator.pop(context);
-                            // 已接收文件时跳转历史页
-                            if (_receivedCount > 0) {
-                              widget.onGoHistory();
-                            }
                           },
                           icon: const Icon(Icons.stop_circle_outlined),
                           label: Text(l10n.wifiTransferClose),

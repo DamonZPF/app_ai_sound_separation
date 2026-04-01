@@ -98,7 +98,7 @@ class StemTask {
   bool get isCompleted => status == 'completed';
   bool get isFailed => status == 'failed';
   bool get isProcessing =>
-      status == 'pending' || status == 'processing' || status == 'uploading';
+      status == 'pending' || status == 'processing' || status == 'uploading' || status == 'queued';
 }
 
 /// 分轨结果项

@@ -94,19 +94,12 @@ class UploadTaskQueue {
           }
         }
 
-        if (task.status == 'uploading') {
-          // 上传中的任务：原生上传可能已经完成，但 Dart 回调已断
+        if (task.status == 'uploading' || task.status == 'queued') {
+          // 上传中/排队中的任务：App 重启后上下文已丢失
           // 标记为失败，用户可重试
-          restored[i] = StemTask(
-            stemTaskId: task.stemTaskId,
-            serverStemTaskId: task.serverStemTaskId,
-            trackTitle: task.trackTitle,
-            stem: task.stem,
+          restored[i] = task.copyWith(
             status: 'failed',
-            createdAt: task.createdAt,
-            progress: task.progress,
             errorMessage: 'error_upload_interrupted',
-            uploadParams: task.uploadParams,
           );
         }
         // processing / completed / failed 保持原状
@@ -458,15 +451,10 @@ class UploadTaskQueue {
       }
 
       // 更新状态为 processing，记录服务端 taskId
-      _updateTask(localId, (t) => StemTask(
-            stemTaskId: t.stemTaskId,
+      _updateTask(localId, (t) => t.copyWith(
             serverStemTaskId: stemTaskId,
-            trackTitle: t.trackTitle,
-            stem: t.stem,
             status: 'processing',
-            createdAt: t.createdAt,
             progress: 50,
-            uploadParams: t.uploadParams,
           ));
 
       // 启动模拟进度：每 2 秒递增 1%，最高到 95%
@@ -517,15 +505,12 @@ class UploadTaskQueue {
       _cleanupPersistedFile(filePathToClean);
       _lastNotifiedProgress.remove(localId);
 
-      _updateTask(localId, (t) => StemTask(
-            stemTaskId: t.stemTaskId,
-            serverStemTaskId: t.serverStemTaskId,
+      _updateTask(localId, (t) => t.copyWith(
             trackTitle: result.trackTitle,
             stem: result.stem,
             status: 'completed',
             createdAt: result.createdAt,
             progress: 100,
-            uploadParams: t.uploadParams,
             results: result.results,
           ), persist: true);
 
@@ -719,16 +704,9 @@ class UploadTaskQueue {
 
   void _markFailed(String localId, String error) {
     _lastNotifiedProgress.remove(localId);
-    _updateTask(localId, (t) => StemTask(
-          stemTaskId: t.stemTaskId,
-          serverStemTaskId: t.serverStemTaskId,
-          trackTitle: t.trackTitle,
-          stem: t.stem,
+    _updateTask(localId, (t) => t.copyWith(
           status: 'failed',
-          createdAt: t.createdAt,
-          progress: t.progress,
           errorMessage: error,
-          uploadParams: t.uploadParams,
         ), persist: true);
   }
 

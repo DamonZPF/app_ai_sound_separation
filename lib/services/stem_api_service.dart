@@ -11,6 +11,7 @@ import '../models/stem_task.dart';
 import 'background_upload_channel.dart';
 import 'chunked_uploader.dart';
 import 'supabase_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 /// 大文件阈值：10MB
 const int _chunkedThreshold = 10 * 1024 * 1024;
@@ -140,6 +141,16 @@ class StemApiService {
   }) async {
     final completer = Completer<String>();
 
+    // 根据网络类型动态调整并发数：WiFi 下 5 路，蜂窝网络 2 路
+    int concurrency = defaultMaxConcurrency;
+    try {
+      final connectivity = await Connectivity().checkConnectivity();
+      if (!connectivity.contains(ConnectivityResult.wifi)) {
+        concurrency = 2;
+        debugPrint('[StemApi] 📶 蜂窝网络，分块并发数降为 $concurrency');
+      }
+    } catch (_) {}
+
     startChunkedUpload(ChunkedUploadOptions(
       filePath: filePath,
       fileName: fileName,
@@ -151,6 +162,7 @@ class StemApiService {
       onProgress: onProgress,
       onComplete: (stemTaskId) => completer.complete(stemTaskId),
       onError: (errMsg) => completer.completeError(Exception(errMsg)),
+      maxConcurrency: concurrency,
     ));
 
     return completer.future;

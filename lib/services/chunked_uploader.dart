@@ -11,8 +11,8 @@ import 'background_upload_channel.dart';
 /// 默认分块大小：5MB（减少 HTTP 请求数以提升速度）
 const int defaultChunkSize = 5 * 1024 * 1024;
 
-/// 最大并发上传数
-const int maxConcurrency = 5;
+/// 默认最大并发上传数（WiFi 下使用，蜂窝网络建议设为 2）
+const int defaultMaxConcurrency = 5;
 
 /// 单个分块最大重试次数
 const int maxChunkRetries = 5;
@@ -29,6 +29,7 @@ class ChunkedUploadOptions {
   final void Function(String stemTaskId)? onComplete;
   final void Function(String errorMessage)? onError;
   final int chunkSize;
+  final int maxConcurrency;
 
   ChunkedUploadOptions({
     required this.filePath,
@@ -42,6 +43,7 @@ class ChunkedUploadOptions {
     this.onComplete,
     this.onError,
     this.chunkSize = defaultChunkSize,
+    this.maxConcurrency = defaultMaxConcurrency,
   });
 }
 
@@ -244,7 +246,7 @@ class _ChunkedUploader {
     try {
       debugPrint(
           '[ChunkedUpload] 🚀 开始分块上传: ${opts.fileName}, 大小: ${opts.totalSize}, '
-          '分块数: $totalChunks, 并发: $maxConcurrency, identifier: $identifier');
+          '分块数: $totalChunks, 并发: ${opts.maxConcurrency}, identifier: $identifier');
 
       // 初始进度
       opts.onProgress?.call(0);
@@ -254,7 +256,7 @@ class _ChunkedUploader {
         (i) => () => _uploadChunkWithRetry(i),
       );
 
-      await _runWithConcurrency(tasks, maxConcurrency);
+      await _runWithConcurrency(tasks, opts.maxConcurrency);
 
       if (!aborted) {
         await _mergeChunks();

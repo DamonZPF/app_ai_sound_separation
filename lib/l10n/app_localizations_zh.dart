@@ -111,7 +111,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadSourceUrlDesc => '来自云服务或公共 URL 的任何媒体';
 
   @override
-  String get uploadMaxSize => '单文件最大 200MB';
+  String get uploadMaxSize => '单文件最大 1GB';
 
   @override
   String get uploadFaqTitle => '常见问题';

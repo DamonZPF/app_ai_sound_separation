@@ -372,7 +372,7 @@ input[type="file"] { display: none; }
     <div class="status" id="statusText"></div>
   </div>
 
-  <p class="formats" data-i18n="maxSize">Max 200MB per file</p>
+  <p class="formats" data-i18n="maxSize">Max 1GB per file</p>
 </div>
 
 <script>
@@ -383,26 +383,26 @@ const i18n = {
     subtitle: '通过 WiFi 从电脑传输文件到手机',
     dropText: '拖拽文件到此处，或点击选择',
     formatHint: '支持 MP3、WAV、FLAC、M4A、MP4、MOV 等格式',
-    maxSize: '单文件最大 200MB',
+    maxSize: '单文件最大 1GB',
     uploading: '上传中...',
     uploadingPct: (pct) => '上传中... ' + pct + '%',
     success: '✅ 上传成功！文件已传输到手机App',
     errorUpload: (msg) => '❌ 上传失败：' + msg,
     errorNetwork: '❌ 网络错误，请检查连接',
-    errorSize: '文件大小超过 200MB 限制',
+    errorSize: '文件大小超过 1GB 限制',
   },
   en: {
     title: '🎵 AI Sound Separation',
     subtitle: 'Transfer files from computer to phone via WiFi',
     dropText: 'Drag & drop file here, or click to select',
     formatHint: 'Supports MP3, WAV, FLAC, M4A, MP4, MOV, etc.',
-    maxSize: 'Max 200MB per file',
+    maxSize: 'Max 1GB per file',
     uploading: 'Uploading...',
     uploadingPct: (pct) => 'Uploading... ' + pct + '%',
     success: '✅ Upload successful! File transferred to phone.',
     errorUpload: (msg) => '❌ Upload failed: ' + msg,
     errorNetwork: '❌ Network error, check your connection',
-    errorSize: 'File exceeds 200MB limit',
+    errorSize: 'File exceeds 1GB limit',
   }
 };
 
@@ -446,7 +446,7 @@ fileInput.addEventListener('change', () => {
 });
 
 function uploadFile(file) {
-  if (file.size > 200 * 1024 * 1024) {
+  if (file.size > 1024 * 1024 * 1024) {
     alert(t.errorSize);
     return;
   }

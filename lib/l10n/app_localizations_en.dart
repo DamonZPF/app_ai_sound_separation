@@ -114,7 +114,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Any media from cloud services or public URL';
 
   @override
-  String get uploadMaxSize => 'Max file size: 200MB';
+  String get uploadMaxSize => 'Max file size: 1GB';
 
   @override
   String get uploadFaqTitle => 'FAQ';

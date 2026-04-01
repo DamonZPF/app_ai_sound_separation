@@ -34,7 +34,7 @@
   "uploadSourceFilesDesc": "Audio files from documents",
   "uploadSourceUrl": "Import from URL",
   "uploadSourceUrlDesc": "Any media from cloud services or public URL",
-  "uploadMaxSize": "Max file size: 200MB",
+  "uploadMaxSize": "Max file size: 1GB",
   "uploadFaqTitle": "FAQ",
   "uploadProgress": "Uploading...",
   "uploadSuccess": "Upload successful, separation task submitted",

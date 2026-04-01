@@ -305,7 +305,7 @@ abstract class AppLocalizations {
   /// No description provided for @uploadMaxSize.
   ///
   /// In zh, this message translates to:
-  /// **'单文件最大 200MB'**
+  /// **'单文件最大 1GB'**
   String get uploadMaxSize;
 
   /// No description provided for @uploadFaqTitle.

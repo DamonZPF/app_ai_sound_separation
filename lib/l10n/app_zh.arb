@@ -34,7 +34,7 @@
   "uploadSourceFilesDesc": "文档中的音频文件",
   "uploadSourceUrl": "从 URL 导入",
   "uploadSourceUrlDesc": "来自云服务或公共 URL 的任何媒体",
-  "uploadMaxSize": "单文件最大 200MB",
+  "uploadMaxSize": "单文件最大 1GB",
   "uploadFaqTitle": "常见问题",
   "uploadProgress": "上传中...",
   "uploadSuccess": "上传成功，已提交分离任务",

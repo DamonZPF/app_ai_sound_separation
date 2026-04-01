@@ -110,6 +110,8 @@
   "wifiTransferContinue": "Not Now",
   "wifiTransferStartNow": "Confirm",
   "wifiTransferMaxFiles": "Please process the received file first",
+  "wifiTransferExitTitle": "Leave Transfer?",
+  "wifiTransferExitMessage": "Leaving will stop the WiFi transfer service. You won't be able to receive files.",
 
   "errorNetworkLost": "Network connection lost, please check and retry",
   "errorTimeout": "Upload timed out, please check network and retry",
@@ -146,7 +148,8 @@
   "mineNotLoggedIn": "Not logged in",
 
   "permissionDeniedTitle": "Permission Required",
-  "permissionPhotoDenied": "Please allow photo library access to select videos",
+  "permissionPhotoDenied": "Photo library access is required to select video files",
+  "permissionPhotoLimited": "Currently in \"Limited Access\" mode. Some videos may not appear. Consider granting full access in Settings.",
   "permissionMediaDenied": "Please allow media library access to select audio files",
   "permissionGoSettings": "Open Settings",
   "permissionDeniedMessage": "You have denied this permission. Please go to Settings to enable it manually."

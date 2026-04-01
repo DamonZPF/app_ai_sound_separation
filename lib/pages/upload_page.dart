@@ -79,8 +79,8 @@ class _UploadPageState extends State<UploadPage> {
   }
 
   // ─── 来源 2: 相册视频 ───
-  // 注意：iOS 14+ 的 PHPickerViewController 在沙箱内运行，
-  // 不需要 Permission.photos，"有限访问"也能正常选取
+  // iOS 14+ 的 PHPickerViewController 在私密模式下运行，
+  // 无需额外权限即可访问完整相册，直接打开选择器即可
   Future<void> _pickFromCameraRoll() async {
     if (_isPicking) return;
     setState(() => _isPicking = true);
@@ -468,15 +468,51 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
     });
   }
 
+  /// 弹窗确认是否离开
+  Future<void> _confirmExit() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.wifiTransferExitTitle),
+        content: Text(l10n.wifiTransferExitMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      _lanService.onFileReceived = null;
+      _lanService.stop();
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.wifiTransferTitle),
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmExit();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.wifiTransferTitle),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _confirmExit,
+          ),
+        ),
       body: _starting
           ? const Center(child: CircularProgressIndicator())
           : ValueListenableBuilder<String?>(
@@ -613,11 +649,7 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                       SizedBox(
                         height: 50,
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            _lanService.onFileReceived = null;
-                            _lanService.stop();
-                            Navigator.pop(context);
-                          },
+                          onPressed: _confirmExit,
                           icon: const Icon(Icons.stop_circle_outlined),
                           label: Text(l10n.wifiTransferClose),
                           style: OutlinedButton.styleFrom(
@@ -636,6 +668,7 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                 );
               },
             ),
+      ),
     );
   }
 }

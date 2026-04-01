@@ -338,6 +338,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wifiTransferMaxFiles => 'Please process the received file first';
 
   @override
+  String get wifiTransferExitTitle => 'Leave Transfer?';
+
+  @override
+  String get wifiTransferExitMessage =>
+      'Leaving will stop the WiFi transfer service. You won\'t be able to receive files.';
+
+  @override
   String get errorNetworkLost =>
       'Network connection lost, please check and retry';
 
@@ -425,7 +432,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get permissionPhotoDenied =>
-      'Please allow photo library access to select videos';
+      'Photo library access is required to select video files';
+
+  @override
+  String get permissionPhotoLimited =>
+      'Currently in \"Limited Access\" mode. Some videos may not appear. Consider granting full access in Settings.';
 
   @override
   String get permissionMediaDenied =>

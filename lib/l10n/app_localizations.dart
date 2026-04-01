@@ -728,6 +728,18 @@ abstract class AppLocalizations {
   /// **'请先处理已接收的文件'**
   String get wifiTransferMaxFiles;
 
+  /// No description provided for @wifiTransferExitTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认离开'**
+  String get wifiTransferExitTitle;
+
+  /// No description provided for @wifiTransferExitMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'离开当前页面将停止 WiFi 传输服务，无法继续接收文件。'**
+  String get wifiTransferExitMessage;
+
   /// No description provided for @errorNetworkLost.
   ///
   /// In zh, this message translates to:
@@ -893,8 +905,14 @@ abstract class AppLocalizations {
   /// No description provided for @permissionPhotoDenied.
   ///
   /// In zh, this message translates to:
-  /// **'请允许访问相册以选取视频文件'**
+  /// **'需要相册访问权限才能选择视频文件'**
   String get permissionPhotoDenied;
+
+  /// No description provided for @permissionPhotoLimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前为“私密访问”模式，部分视频可能无法显示。建议在设置中开启“允许完全访问”。'**
+  String get permissionPhotoLimited;
 
   /// No description provided for @permissionMediaDenied.
   ///

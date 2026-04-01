@@ -329,6 +329,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get wifiTransferMaxFiles => '请先处理已接收的文件';
 
   @override
+  String get wifiTransferExitTitle => '确认离开';
+
+  @override
+  String get wifiTransferExitMessage => '离开当前页面将停止 WiFi 传输服务，无法继续接收文件。';
+
+  @override
   String get errorNetworkLost => '网络连接中断，请检查网络后重试';
 
   @override
@@ -412,7 +418,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get permissionDeniedTitle => '需要访问权限';
 
   @override
-  String get permissionPhotoDenied => '请允许访问相册以选取视频文件';
+  String get permissionPhotoDenied => '需要相册访问权限才能选择视频文件';
+
+  @override
+  String get permissionPhotoLimited =>
+      '当前为“私密访问”模式，部分视频可能无法显示。建议在设置中开启“允许完全访问”。';
 
   @override
   String get permissionMediaDenied => '请允许访问媒体库以选取音频文件';

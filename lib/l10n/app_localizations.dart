@@ -931,6 +931,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'您已拒绝此权限。请前往「设置」手动开启相关权限开关。'**
   String get permissionDeniedMessage;
+
+  /// No description provided for @networkCheckingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在连接...'**
+  String get networkCheckingTitle;
+
+  /// No description provided for @networkNoConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'无网络连接'**
+  String get networkNoConnection;
+
+  /// No description provided for @networkNoConnectionMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'请检查网络设置，确保已连接 WiFi 或开启移动数据。'**
+  String get networkNoConnectionMessage;
+
+  /// No description provided for @networkRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新连接'**
+  String get networkRetry;
+
+  /// No description provided for @networkLoginFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务连接失败，请检查网络后重试'**
+  String get networkLoginFailed;
 }
 
 class _AppLocalizationsDelegate

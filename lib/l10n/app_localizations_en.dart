@@ -448,4 +448,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get permissionDeniedMessage =>
       'You have denied this permission. Please go to Settings to enable it manually.';
+
+  @override
+  String get networkCheckingTitle => 'Connecting...';
+
+  @override
+  String get networkNoConnection => 'No Network Connection';
+
+  @override
+  String get networkNoConnectionMessage =>
+      'Please check your network settings. Make sure WiFi or mobile data is enabled.';
+
+  @override
+  String get networkRetry => 'Retry';
+
+  @override
+  String get networkLoginFailed =>
+      'Connection failed. Please check your network and try again';
 }

@@ -152,5 +152,11 @@
   "permissionPhotoLimited": "当前为“私密访问”模式，部分视频可能无法显示。建议在设置中开启“允许完全访问”。",
   "permissionMediaDenied": "请允许访问媒体库以选取音频文件",
   "permissionGoSettings": "前往设置",
-  "permissionDeniedMessage": "您已拒绝此权限。请前往\u300c设置\u300d手动开启相关权限开关。"
+  "permissionDeniedMessage": "您已拒绝此权限。请前往\u300c设置\u300d手动开启相关权限开关。",
+
+  "networkCheckingTitle": "正在连接...",
+  "networkNoConnection": "无网络连接",
+  "networkNoConnectionMessage": "请检查网络设置，确保已连接 WiFi 或开启移动数据。",
+  "networkRetry": "重新连接",
+  "networkLoginFailed": "服务连接失败，请检查网络后重试"
 }

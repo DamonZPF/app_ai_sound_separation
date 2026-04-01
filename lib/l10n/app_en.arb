@@ -152,5 +152,11 @@
   "permissionPhotoLimited": "Currently in \"Limited Access\" mode. Some videos may not appear. Consider granting full access in Settings.",
   "permissionMediaDenied": "Please allow media library access to select audio files",
   "permissionGoSettings": "Open Settings",
-  "permissionDeniedMessage": "You have denied this permission. Please go to Settings to enable it manually."
+  "permissionDeniedMessage": "You have denied this permission. Please go to Settings to enable it manually.",
+
+  "networkCheckingTitle": "Connecting...",
+  "networkNoConnection": "No Network Connection",
+  "networkNoConnectionMessage": "Please check your network settings. Make sure WiFi or mobile data is enabled.",
+  "networkRetry": "Retry",
+  "networkLoginFailed": "Connection failed. Please check your network and try again"
 }

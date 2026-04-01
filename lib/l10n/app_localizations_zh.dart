@@ -432,4 +432,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get permissionDeniedMessage => '您已拒绝此权限。请前往「设置」手动开启相关权限开关。';
+
+  @override
+  String get networkCheckingTitle => '正在连接...';
+
+  @override
+  String get networkNoConnection => '无网络连接';
+
+  @override
+  String get networkNoConnectionMessage => '请检查网络设置，确保已连接 WiFi 或开启移动数据。';
+
+  @override
+  String get networkRetry => '重新连接';
+
+  @override
+  String get networkLoginFailed => '服务连接失败，请检查网络后重试';
 }

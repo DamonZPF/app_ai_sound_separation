@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../l10n/app_localizations.dart';
 import '../services/upload_task_queue.dart';
 import '../services/lan_upload_service.dart';
@@ -48,68 +47,14 @@ class _UploadPageState extends State<UploadPage> {
     Navigator.pop(context, 'go_history');
   }
 
-  // ─── 权限检查通用方法 ───
-
-  /// 检查权限并在被拒绝时引导用户打开设置
-  /// 返回 true 表示权限已授予，false 表示未授予
-  Future<bool> _checkPermission(Permission permission, String deniedMessage) async {
-    var status = await permission.status;
-
-    // 未确定状态，发起请求
-    if (status.isDenied) {
-      status = await permission.request();
-    }
-
-    if (status.isGranted || status.isLimited) {
-      return true;
-    }
-
-    // 永久拒绝：弹窗引导用户前往设置
-    if (status.isPermanentlyDenied && mounted) {
-      _showPermissionDeniedDialog(deniedMessage);
-    }
-
-    return false;
-  }
-
-  /// 显示权限被拒绝的引导对话框
-  void _showPermissionDeniedDialog(String message) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.permissionDeniedTitle),
-        content: Text('$message\n\n${l10n.permissionDeniedMessage}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              openAppSettings();
-            },
-            child: Text(l10n.permissionGoSettings),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── 来源 1: iTunes (iOS 原生媒体库选择器) ───
+  // 注意：媒体库权限由原生 MPMediaPickerController 自行处理，
+  // Flutter 层不需要额外检查 Permission.mediaLibrary
   Future<void> _pickFromItunes() async {
     if (_isPicking) return;
     setState(() => _isPicking = true);
     final l10n = AppLocalizations.of(context)!;
     try {
-      // 检查媒体库权限（iOS）
-      final hasPermission = await _checkPermission(
-        Permission.mediaLibrary,
-        l10n.permissionMediaDenied,
-      );
-      if (!hasPermission) return;
-
       final result = await _itunesChannel.invokeMethod('pickFromItunes');
       if (result == null) return; // 用户取消
       final Map<String, dynamic> data = Map<String, dynamic>.from(result);
@@ -132,19 +77,13 @@ class _UploadPageState extends State<UploadPage> {
     );
   }
 
-  // ─── 来源 2: 相机胶卷 (视频) ───
+  // ─── 来源 2: 相册视频 ───
+  // 注意：iOS 14+ 的 PHPickerViewController 在沙箱内运行，
+  // 不需要 Permission.photos，"有限访问"也能正常选取
   Future<void> _pickFromCameraRoll() async {
     if (_isPicking) return;
     setState(() => _isPicking = true);
-    final l10n = AppLocalizations.of(context)!;
     try {
-      // 检查相册权限
-      final hasPermission = await _checkPermission(
-        Permission.photos,
-        l10n.permissionPhotoDenied,
-      );
-      if (!hasPermission) return;
-
       final picker = ImagePicker();
       final video = await picker.pickVideo(source: ImageSource.gallery);
       if (video == null) return;
@@ -200,6 +139,8 @@ class _UploadPageState extends State<UploadPage> {
             ),
             keyboardType: TextInputType.url,
             autofocus: true,
+            minLines: 1,
+            maxLines: 5,
           ),
           actions: [
             TextButton(

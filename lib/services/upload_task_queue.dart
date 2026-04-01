@@ -125,13 +125,21 @@ class UploadTaskQueue {
   }
 
   /// 监听网络状态变化
+  DateTime? _lastNetworkRestore;
+
   void _startNetworkMonitor() {
     _connectivitySub?.cancel();
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
       final connected = results.any((r) => r != ConnectivityResult.none);
       if (connected && !_hasNetwork) {
-        // 网络恢复 → 自动重试失败的任务
+        // 网络恢复 → 防抖 5 秒，避免信号波动重复触发
         _hasNetwork = true;
+        final now = DateTime.now();
+        if (_lastNetworkRestore != null &&
+            now.difference(_lastNetworkRestore!).inSeconds < 5) {
+          return;
+        }
+        _lastNetworkRestore = now;
         debugPrint('[TaskQueue] 📶 网络恢复，检查待重试任务...');
         _retryFailedTasksOnNetworkRestore();
         _drainPendingQueue();

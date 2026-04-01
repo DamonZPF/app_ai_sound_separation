@@ -269,13 +269,13 @@ abstract class AppLocalizations {
   /// No description provided for @uploadSourceCameraRoll.
   ///
   /// In zh, this message translates to:
-  /// **'相机胶卷'**
+  /// **'相册视频'**
   String get uploadSourceCameraRoll;
 
   /// No description provided for @uploadSourceCameraRollDesc.
   ///
   /// In zh, this message translates to:
-  /// **'设备相册中的任何视频'**
+  /// **'设备相册中的视频文件'**
   String get uploadSourceCameraRollDesc;
 
   /// No description provided for @uploadSourceFiles.

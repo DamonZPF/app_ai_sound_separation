@@ -94,11 +94,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Local audio tracks downloaded on device';
 
   @override
-  String get uploadSourceCameraRoll => 'Camera Roll';
+  String get uploadSourceCameraRoll => 'Album Videos';
 
   @override
   String get uploadSourceCameraRollDesc =>
-      'Any video from device photo library';
+      'Video files from device photo library';
 
   @override
   String get uploadSourceFiles => 'Files';

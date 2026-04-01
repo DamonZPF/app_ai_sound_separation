@@ -93,10 +93,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadSourceItunesDesc => '设备上已下载的本地音轨';
 
   @override
-  String get uploadSourceCameraRoll => '相机胶卷';
+  String get uploadSourceCameraRoll => '相册视频';
 
   @override
-  String get uploadSourceCameraRollDesc => '设备相册中的任何视频';
+  String get uploadSourceCameraRollDesc => '设备相册中的视频文件';
 
   @override
   String get uploadSourceFiles => '文件';

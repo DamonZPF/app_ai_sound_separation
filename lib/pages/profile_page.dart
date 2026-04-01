@@ -1,5 +1,6 @@
 // 我的页面 — 用户协议、隐私政策、常见问题
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../l10n/app_localizations.dart';
 import 'webview_page.dart';
 
@@ -36,11 +37,21 @@ class ProfilePage extends StatelessWidget {
           _MenuItem(
             icon: Icons.help_outline,
             title: l10n.mineFaq,
-            onTap: () => _openWebView(
-              context,
-              title: l10n.mineFaq,
-              url: 'https://miniapp.brightworld.work/faq',
-            ),
+            onTap: () {
+              final locale = Localizations.localeOf(context);
+              final faqAsset = locale.languageCode == 'zh'
+                  ? 'assets/html/faq.html'
+                  : 'assets/html/faq_en.html';
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _LocalHtmlPage(
+                    title: l10n.mineFaq,
+                    assetPath: faqAsset,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -54,6 +65,38 @@ class ProfilePage extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => WebViewPage(url: url, title: title),
       ),
+    );
+  }
+}
+
+/// 加载本地 HTML 资源的页面
+class _LocalHtmlPage extends StatefulWidget {
+  final String title;
+  final String assetPath;
+
+  const _LocalHtmlPage({required this.title, required this.assetPath});
+
+  @override
+  State<_LocalHtmlPage> createState() => _LocalHtmlPageState();
+}
+
+class _LocalHtmlPageState extends State<_LocalHtmlPage> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.transparent)
+      ..loadFlutterAsset(widget.assetPath);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: WebViewWidget(controller: _controller),
     );
   }
 }

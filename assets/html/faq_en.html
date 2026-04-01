@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FAQ</title>
+<style>
+  :root {
+    --primary: #667eea;
+    --bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --text: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --border: #e5e5ea;
+    --accent: #764ba2;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card-bg: #2c2c2e;
+      --text: #f5f5f7;
+      --text-secondary: #98989d;
+      --border: #38383a;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+    padding: 16px;
+    padding-bottom: 40px;
+  }
+
+  .faq-item {
+    background: var(--card-bg);
+    border-radius: 14px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    font-size: 15px;
+    font-weight: 600;
+    gap: 12px;
+  }
+
+  .faq-question::before {
+    content: 'Q';
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .faq-question .arrow {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s ease;
+    fill: var(--text-secondary);
+  }
+
+  .faq-item.open .faq-question .arrow {
+    transform: rotate(180deg);
+  }
+
+  .faq-question span {
+    flex: 1;
+  }
+
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease, padding 0.35s ease;
+    padding: 0 18px 0 56px;
+  }
+
+  .faq-item.open .faq-answer {
+    max-height: 600px;
+    padding: 0 18px 18px 56px;
+  }
+
+  .faq-answer p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 8px;
+  }
+
+  .faq-answer p:last-child {
+    margin-bottom: 0;
+  }
+
+  .faq-answer .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .faq-answer .step-num {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .faq-answer .tip {
+    background: rgba(102, 126, 234, 0.08);
+    border-left: 3px solid var(--primary);
+    padding: 10px 14px;
+    border-radius: 0 10px 10px 0;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 20px 4px 10px;
+  }
+
+  .section-title:first-child {
+    padding-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="section-title">📤 Upload & Files</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>What file formats are supported?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p><strong>Audio:</strong> MP3, WAV, FLAC, M4A, AAC, OGG, WMA</p>
+    <p><strong>Video:</strong> MP4, MOV, AVI, MKV, WEBM</p>
+    <p>When uploading a video file, the system will automatically extract the audio track for separation.</p>
+    <div class="tip">💡 For best results, use lossless formats like WAV or FLAC.</div>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>Is there a file size limit?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>The maximum file size is <strong>1 GB</strong>.</p>
+    <p>Large files are uploaded in chunks, ensuring reliable delivery even on unstable networks. If an upload is interrupted, the system will automatically retry when the network recovers.</p>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>What are the ways to upload files?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>There are 4 upload methods:</p>
+    <div class="step"><span class="step-num">1</span><span><strong>iTunes File Sharing</strong> — Transfer files via Finder / iTunes to the app's sandbox</span></div>
+    <div class="step"><span class="step-num">2</span><span><strong>Photo Library</strong> — Pick a video from your camera roll; audio is extracted automatically</span></div>
+    <div class="step"><span class="step-num">3</span><span><strong>Files App</strong> — Select from iCloud Drive, local storage, or other locations</span></div>
+    <div class="step"><span class="step-num">4</span><span><strong>WiFi Transfer</strong> — Upload from a computer browser on the same local network</span></div>
+  </div>
+</div>
+
+<div class="section-title">📡 WiFi Transfer</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>How do I use WiFi Transfer?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <div class="step"><span class="step-num">1</span><span>Make sure your phone and computer are on the <strong>same WiFi network</strong></span></div>
+    <div class="step"><span class="step-num">2</span><span>Open the WiFi Transfer page in the app — an address will be displayed</span></div>
+    <div class="step"><span class="step-num">3</span><span>Enter that address in your computer's browser</span></div>
+    <div class="step"><span class="step-num">4</span><span>Click the upload button on the web page and select your file</span></div>
+    <div class="step"><span class="step-num">5</span><span>Once the transfer completes, the app will ask you to confirm separation</span></div>
+    <div class="tip">💡 Keep the app in the foreground during transfer. Leaving the page will stop the service.</div>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>WiFi Transfer shows "Unable to get WiFi address"?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>Please check the following:</p>
+    <div class="step"><span class="step-num">1</span><span>Confirm your phone is connected to WiFi (not using cellular data)</span></div>
+    <div class="step"><span class="step-num">2</span><span>In system Settings, make sure the app has "Local Network" permission enabled</span></div>
+    <div class="step"><span class="step-num">3</span><span>Try disconnecting and reconnecting to WiFi</span></div>
+  </div>
+</div>
+
+<div class="section-title">🎵 Audio Separation</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>What separation types are available?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p><strong>10 separation types</strong> are supported:</p>
+    <p>🎵 Vocals & Accompaniment · 🎙️ Noise Removal · 🥁 Drums · 🎸 Bass · 🪕 Acoustic Guitar · 🎸 Electric Guitar · 🎹 Piano · 🎛️ Synthesizer · 🎻 Strings · 🎺 Wind Instruments</p>
+    <p>Each type uses a specialized AI model to extract the corresponding audio track.</p>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>How long does separation take?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>Processing time depends on file size and server load:</p>
+    <p>• Songs under 3 minutes: about <strong>1–3 minutes</strong></p>
+    <p>• Audio 5–10 minutes long: about <strong>3–8 minutes</strong></p>
+    <p>You can leave the app during processing. The status will update in History when complete.</p>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>Where can I find my results?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>Go to the <strong>"History"</strong> tab in the bottom navigation bar.</p>
+    <p>Tap a completed task to preview each separated track. You can also share them with other apps.</p>
+  </div>
+</div>
+
+<div class="section-title">⚠️ Troubleshooting</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>What should I do if an upload fails?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>Common causes and solutions:</p>
+    <div class="step"><span class="step-num">1</span><span><strong>Unstable network</strong> — Switch to a more stable WiFi; the system will auto-retry when connection recovers</span></div>
+    <div class="step"><span class="step-num">2</span><span><strong>File too large</strong> — Make sure the file is under 1 GB</span></div>
+    <div class="step"><span class="step-num">3</span><span><strong>Unsupported format</strong> — Verify the file is a supported audio or video format</span></div>
+    <div class="step"><span class="step-num">4</span><span><strong>Server busy</strong> — Wait a few minutes, then tap Retry in History</span></div>
+    <div class="tip">💡 Failed tasks remain in History and can be retried at any time.</div>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>"No Network Connection" — Can't open the app?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>The app requires an internet connection for account initialization. Please verify:</p>
+    <div class="step"><span class="step-num">1</span><span>Your phone is connected to WiFi or cellular data is enabled</span></div>
+    <div class="step"><span class="step-num">2</span><span>In iOS Settings → Cellular, confirm the app is allowed to use the network</span></div>
+    <div class="step"><span class="step-num">3</span><span>If using a VPN, try disabling it</span></div>
+    <p>Once your network is confirmed, tap the "Retry" button on the screen.</p>
+  </div>
+</div>
+
+<div class="faq-item">
+  <div class="faq-question" onclick="toggle(this)">
+    <span>The progress bar seems stuck at a certain percentage?</span>
+    <svg class="arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+  </div>
+  <div class="faq-answer">
+    <p>After the upload finishes, the server begins processing. The progress bar will advance slowly — this is normal.</p>
+    <p>If it hasn't completed after 10 minutes, the server may be busy. Check the task status in History and tap Retry if needed.</p>
+  </div>
+</div>
+
+<script>
+function toggle(el) {
+  const item = el.parentElement;
+  item.classList.toggle('open');
+}
+</script>
+</body>
+</html>

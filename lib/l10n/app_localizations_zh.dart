@@ -404,4 +404,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mineNotLoggedIn => '未登录';
+
+  @override
+  String get permissionDeniedTitle => '需要访问权限';
+
+  @override
+  String get permissionPhotoDenied => '请允许访问相册以选取视频文件';
+
+  @override
+  String get permissionMediaDenied => '请允许访问媒体库以选取音频文件';
+
+  @override
+  String get permissionGoSettings => '前往设置';
+
+  @override
+  String get permissionDeniedMessage => '您已拒绝此权限。请前往「设置」手动开启相关权限开关。';
 }

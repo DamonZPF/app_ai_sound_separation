@@ -142,5 +142,11 @@
       "count": {}
     }
   },
-  "mineNotLoggedIn": "未登录"
+  "mineNotLoggedIn": "未登录",
+
+  "permissionDeniedTitle": "需要访问权限",
+  "permissionPhotoDenied": "请允许访问相册以选取视频文件",
+  "permissionMediaDenied": "请允许访问媒体库以选取音频文件",
+  "permissionGoSettings": "前往设置",
+  "permissionDeniedMessage": "您已拒绝此权限。请前往\u300c设置\u300d手动开启相关权限开关。"
 }

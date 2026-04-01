@@ -877,6 +877,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'未登录'**
   String get mineNotLoggedIn;
+
+  /// No description provided for @permissionDeniedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要访问权限'**
+  String get permissionDeniedTitle;
+
+  /// No description provided for @permissionPhotoDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'请允许访问相册以选取视频文件'**
+  String get permissionPhotoDenied;
+
+  /// No description provided for @permissionMediaDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'请允许访问媒体库以选取音频文件'**
+  String get permissionMediaDenied;
+
+  /// No description provided for @permissionGoSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往设置'**
+  String get permissionGoSettings;
+
+  /// No description provided for @permissionDeniedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'您已拒绝此权限。请前往「设置」手动开启相关权限开关。'**
+  String get permissionDeniedMessage;
 }
 
 class _AppLocalizationsDelegate

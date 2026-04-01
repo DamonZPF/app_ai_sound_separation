@@ -142,5 +142,11 @@
       "count": {}
     }
   },
-  "mineNotLoggedIn": "Not logged in"
+  "mineNotLoggedIn": "Not logged in",
+
+  "permissionDeniedTitle": "Permission Required",
+  "permissionPhotoDenied": "Please allow photo library access to select videos",
+  "permissionMediaDenied": "Please allow media library access to select audio files",
+  "permissionGoSettings": "Open Settings",
+  "permissionDeniedMessage": "You have denied this permission. Please go to Settings to enable it manually."
 }

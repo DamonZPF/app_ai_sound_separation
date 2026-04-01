@@ -416,4 +416,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mineNotLoggedIn => 'Not logged in';
+
+  @override
+  String get permissionDeniedTitle => 'Permission Required';
+
+  @override
+  String get permissionPhotoDenied =>
+      'Please allow photo library access to select videos';
+
+  @override
+  String get permissionMediaDenied =>
+      'Please allow media library access to select audio files';
+
+  @override
+  String get permissionGoSettings => 'Open Settings';
+
+  @override
+  String get permissionDeniedMessage =>
+      'You have denied this permission. Please go to Settings to enable it manually.';
 }

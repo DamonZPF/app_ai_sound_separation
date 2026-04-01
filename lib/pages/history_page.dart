@@ -188,10 +188,7 @@ class _HistoryPageState extends State<HistoryPage> with WidgetsBindingObserver {
     for (final task in List.of(pending)) {
       try {
         // 如果这个任务已在 UploadTaskQueue 内部轮询中，跳过避免双重轮询
-        final isInternalPolling = _queue.tasks.any((t) =>
-            t.serverStemTaskId == task.stemTaskId &&
-            (t.status == 'processing' || t.status == 'uploading'));
-        if (isInternalPolling) {
+        if (_queue.isInternallyProcessing(task.stemTaskId)) {
           debugPrint('[HistoryPage] ⏭ 跳过内部轮询中的任务: ${task.stemTaskId}');
           continue;
         }

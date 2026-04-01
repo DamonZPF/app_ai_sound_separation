@@ -2,6 +2,8 @@
 // 用户通过电脑浏览器访问页面拖拽上传文件到 App
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shelf/shelf.dart';
@@ -77,23 +79,31 @@ class LanUploadService {
     // 文件上传接口
     router.post('/upload', _handleUpload);
 
-    try {
-      _server = await shelf_io.serve(
-        router.call,
-        InternetAddress.anyIPv4,
-        8080,
-        shared: true, // 允许端口复用，避免重启时 Address already in use
-      );
-      final url = 'http://$ip:8080';
-      serverUrl.value = url;
-      isRunning.value = true;
-      debugPrint('[LanUpload] ✅ 服务已启动: $url');
-      debugPrint('[LanUpload] ✅ 实际绑定: ${_server!.address.address}:${_server!.port}');
-      return true;
-    } catch (e) {
-      debugPrint('[LanUpload] ❌ 启动失败: $e');
-      return false;
+    // 尝试多个端口，避免单一端口被占用导致启动失败
+    const ports = [8080, 8081, 8082, 8083];
+    for (final port in ports) {
+      try {
+        _server = await shelf_io.serve(
+          router.call,
+          InternetAddress.anyIPv4,
+          port,
+          shared: true, // 允许端口复用，避免重启时 Address already in use
+        );
+        final url = 'http://$ip:$port';
+        serverUrl.value = url;
+        isRunning.value = true;
+        debugPrint('[LanUpload] ✅ 服务已启动: $url');
+        debugPrint('[LanUpload] ✅ 实际绑定: ${_server!.address.address}:${_server!.port}');
+        return true;
+      } catch (e) {
+        debugPrint('[LanUpload] ⚠️ 端口 $port 不可用: $e');
+        if (port == ports.last) {
+          debugPrint('[LanUpload] ❌ 所有备选端口均不可用');
+          return false;
+        }
+      }
     }
+    return false;
   }
 
   /// 停止服务器
@@ -120,9 +130,12 @@ class LanUploadService {
       }
       final boundary = boundaryMatch.group(1)!;
 
-      // 读取整个 body
-      final bytes = await request.read().expand((e) => e).toList();
-      final body = bytes;
+      // 读取整个 body（使用 BytesBuilder 减少内存开销，避免 OOM）
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in request.read()) {
+        builder.add(chunk);
+      }
+      final body = builder.toBytes();
 
       // 手动解析 multipart
       final boundaryBytes = '--$boundary'.codeUnits;
@@ -165,13 +178,13 @@ class LanUploadService {
       onFileReceived?.call(savePath, fileName);
 
       return Response.ok(
-        '{"success":true,"fileName":"$fileName","size":${fileData.length}}',
+        json.encode({'success': true, 'fileName': fileName, 'size': fileData.length}),
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e) {
       debugPrint('[LanUpload] 上传处理失败: $e');
       return Response.internalServerError(
-        body: '{"error":"$e"}',
+        body: json.encode({'error': e.toString()}),
         headers: {'Content-Type': 'application/json'},
       );
     }

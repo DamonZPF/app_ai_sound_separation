@@ -26,6 +26,41 @@ class StemTask {
     this.uploadParams,
   });
 
+  /// 创建副本并覆盖指定字段
+  /// [clearServerStemTaskId] 为 true 时将 serverStemTaskId 显式置 null
+  /// [clearErrorMessage] 为 true 时将 errorMessage 显式置 null
+  StemTask copyWith({
+    String? stemTaskId,
+    String? serverStemTaskId,
+    bool clearServerStemTaskId = false,
+    String? trackTitle,
+    String? stem,
+    String? status,
+    String? createdAt,
+    int? progress,
+    String? errorMessage,
+    bool clearErrorMessage = false,
+    List<StemResultItem>? results,
+    UploadParams? uploadParams,
+  }) {
+    return StemTask(
+      stemTaskId: stemTaskId ?? this.stemTaskId,
+      serverStemTaskId: clearServerStemTaskId
+          ? null
+          : (serverStemTaskId ?? this.serverStemTaskId),
+      trackTitle: trackTitle ?? this.trackTitle,
+      stem: stem ?? this.stem,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      progress: progress ?? this.progress,
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
+      results: results ?? this.results,
+      uploadParams: uploadParams ?? this.uploadParams,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'stemTaskId': stemTaskId,
         if (serverStemTaskId != null) 'serverStemTaskId': serverStemTaskId,

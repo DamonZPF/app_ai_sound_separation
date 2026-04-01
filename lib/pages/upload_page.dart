@@ -50,7 +50,7 @@ class _UploadPageState extends State<UploadPage> {
   // ─── 来源 1: iTunes (iOS 原生媒体库选择器) ───
   Future<void> _pickFromItunes() async {
     if (_isPicking) return;
-    _isPicking = true;
+    setState(() => _isPicking = true);
     final l10n = AppLocalizations.of(context)!;
     try {
       final result = await _itunesChannel.invokeMethod('pickFromItunes');
@@ -58,13 +58,13 @@ class _UploadPageState extends State<UploadPage> {
       final Map<String, dynamic> data = Map<String, dynamic>.from(result);
       final path = data['path'] as String;
       final name = data['name'] as String;
-      _enqueueFile(path, name);
+      await _enqueueFile(path, name);
     } on PlatformException catch (e) {
       _showError(e.message ?? l10n.errorPickAudioFailed);
     } catch (e) {
       _showError(e.toString());
     } finally {
-      _isPicking = false;
+      if (mounted) setState(() => _isPicking = false);
     }
   }
 
@@ -78,23 +78,23 @@ class _UploadPageState extends State<UploadPage> {
   // ─── 来源 2: 相机胶卷 (视频) ───
   Future<void> _pickFromCameraRoll() async {
     if (_isPicking) return;
-    _isPicking = true;
+    setState(() => _isPicking = true);
     try {
       final picker = ImagePicker();
       final video = await picker.pickVideo(source: ImageSource.gallery);
       if (video == null) return;
-      _enqueueFile(video.path, video.name);
+      await _enqueueFile(video.path, video.name);
     } catch (e) {
       _showError(e.toString());
     } finally {
-      _isPicking = false;
+      if (mounted) setState(() => _isPicking = false);
     }
   }
 
   // ─── 来源 3: 文件管理器 (自定义类型) ───
   Future<void> _pickFromFiles() async {
     if (_isPicking) return;
-    _isPicking = true;
+    setState(() => _isPicking = true);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -107,16 +107,17 @@ class _UploadPageState extends State<UploadPage> {
       if (result == null || result.files.isEmpty) return;
       final file = result.files.first;
       if (file.path == null) return;
-      _enqueueFile(file.path!, file.name);
+      await _enqueueFile(file.path!, file.name);
     } catch (e) {
       _showError(e.toString());
     } finally {
-      _isPicking = false;
+      if (mounted) setState(() => _isPicking = false);
     }
   }
 
   // ─── 来源 4: URL 导入 ───
   Future<void> _importFromUrl() async {
+    _urlController.clear();
     final l10n = AppLocalizations.of(context)!;
     final url = await showDialog<String>(
       context: context,
@@ -624,8 +625,13 @@ class _WifiTransferPageState extends State<_WifiTransferPage> {
                         height: 50,
                         child: OutlinedButton.icon(
                           onPressed: () {
+                            _lanService.onFileReceived = null;
                             _lanService.stop();
                             Navigator.pop(context);
+                            // 已接收文件时跳转历史页
+                            if (_receivedCount > 0) {
+                              widget.onGoHistory();
+                            }
                           },
                           icon: const Icon(Icons.stop_circle_outlined),
                           label: Text(l10n.wifiTransferClose),

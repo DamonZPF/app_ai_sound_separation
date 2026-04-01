@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:uuid/uuid.dart';
 import '../models/stem_task.dart';
 import 'stem_api_service.dart';
 import 'pending_task_store.dart';
@@ -28,7 +29,7 @@ class UploadTaskQueue {
 
   List<StemTask> get tasks => tasksNotifier.value;
 
-  int _localIdCounter = 0;
+  final Uuid _uuid = const Uuid();
 
   /// 持久化防抖定时器（避免进度更新时高频写磁盘）
   Timer? _persistDebounceTimer;
@@ -48,6 +49,9 @@ class UploadTaskQueue {
   /// 当前正在处理的任务 ID 集合
   final Set<String> _processingTaskIds = {};
 
+  /// 正在恢复轮询的任务 ID 集合（防止历史页重复轮询）
+  final Set<String> _resumingTaskIds = {};
+
   /// 等待执行的任务 ID 队列
   final List<String> _pendingQueue = [];
 
@@ -57,6 +61,9 @@ class UploadTaskQueue {
 
   /// 初始化：从持久化存储恢复队列
   Future<void> init() async {
+    // 启动网络状态监听（无论是否有持久化队列都需要）
+    _startNetworkMonitor();
+
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString(_storageKey);
     if (jsonStr == null || jsonStr.isEmpty) {
@@ -122,9 +129,6 @@ class UploadTaskQueue {
     } catch (e) {
       debugPrint('[TaskQueue] 恢复失败: $e');
     }
-
-    // 启动网络状态监听
-    _startNetworkMonitor();
   }
 
   /// 监听网络状态变化
@@ -177,7 +181,7 @@ class UploadTaskQueue {
     String outputFormat = 'mp3',
   }) async {
     final now = DateTime.now();
-    final localId = 'local_${now.millisecondsSinceEpoch}_${_localIdCounter++}';
+    final localId = 'local_${_uuid.v4()}';
     final apiStem = mapTypeIdToStem(stem); // UI typeId → API stem
 
     // 将文件从 tmp 复制到永久目录，确保 App 重启后文件仍在
@@ -213,7 +217,7 @@ class UploadTaskQueue {
     String outputFormat = 'mp3',
   }) {
     final now = DateTime.now();
-    final localId = 'local_${now.millisecondsSinceEpoch}_${_localIdCounter++}';
+    final localId = 'local_${_uuid.v4()}';
     final apiStem = mapTypeIdToStem(stem);
 
     final task = StemTask(
@@ -247,6 +251,8 @@ class UploadTaskQueue {
     if (_processingTaskIds.length >= _maxConcurrentUploads) {
       debugPrint('[TaskQueue] ⏳ 并发已满 ($_maxConcurrentUploads)，排队: $localId');
       if (!_pendingQueue.contains(localId)) _pendingQueue.add(localId);
+      // 更新状态为 queued，让 UI 显示排队中
+      _updateTask(localId, (t) => t.copyWith(status: 'queued'));
       return;
     }
     _processingTaskIds.add(localId);
@@ -388,11 +394,15 @@ class UploadTaskQueue {
       (t) => t.stemTaskId == localId,
       orElse: () => StemTask(stemTaskId: '', trackTitle: '', stem: '', status: 'unknown', createdAt: ''),
     );
-    if (task.stemTaskId.isEmpty) return;
+    if (task.stemTaskId.isEmpty) {
+      _onTaskFinished(localId);
+      return;
+    }
 
     final params = task.uploadParams;
     if (params == null) {
       _markFailed(localId, 'error_missing_params');
+      _onTaskFinished(localId);
       return;
     }
 
@@ -539,9 +549,10 @@ class UploadTaskQueue {
     }
   }
 
-  /// 任务结束时释放并发槽位 + 触发排水
+  /// 任务结束时释放并发槽位 + 清理已删除标记 + 触发排水
   void _onTaskFinished(String localId) {
     _processingTaskIds.remove(localId);
+    _removedTaskIds.remove(localId);
     _drainPendingQueue();
   }
 
@@ -549,10 +560,13 @@ class UploadTaskQueue {
   void _drainPendingQueue() {
     while (_pendingQueue.isNotEmpty && _processingTaskIds.length < _maxConcurrentUploads) {
       final nextId = _pendingQueue.removeAt(0);
-      // 确认任务仍存在且需要处理
-      final exists = tasks.any((t) => t.stemTaskId == nextId && t.status == 'uploading');
+      // 确认任务仍存在且需要处理（排队状态为 'queued'）
+      final exists = tasks.any((t) => t.stemTaskId == nextId &&
+          (t.status == 'queued' || t.status == 'uploading'));
       if (exists && !_removedTaskIds.contains(nextId)) {
         debugPrint('[TaskQueue] ▶️ 从队列取出执行: $nextId');
+        // 恢复状态为 uploading
+        _updateTask(nextId, (t) => t.copyWith(status: 'uploading'));
         _processingTaskIds.add(nextId);
         _processTask(nextId);
       }
@@ -619,6 +633,7 @@ class UploadTaskQueue {
   /// P0+P4: Kill App 后恢复 processing 任务的独立轮询
   /// 不走 _processTask（那个会重新上传），只做轮询
   Future<void> _resumeProcessingTask(String localId, String stemTaskId) async {
+    _resumingTaskIds.add(localId);
     try {
       final result = await _api.pollTask(
         stemTaskId,
@@ -654,15 +669,12 @@ class UploadTaskQueue {
       ).uploadParams?.filePath;
 
       _lastNotifiedProgress.remove(localId);
-      _updateTask(localId, (t) => StemTask(
-            stemTaskId: t.stemTaskId,
-            serverStemTaskId: t.serverStemTaskId,
+      _updateTask(localId, (t) => t.copyWith(
             trackTitle: result.trackTitle,
             stem: result.stem,
             status: 'completed',
             createdAt: result.createdAt,
             progress: 100,
-            uploadParams: t.uploadParams,
             results: result.results,
           ), persist: true);
 
@@ -678,12 +690,23 @@ class UploadTaskQueue {
       }
       debugPrint('[TaskQueue] ❌ 恢复任务轮询失败: $localId, $e');
       _markFailed(localId, _friendlyErrorMessage(e.toString()));
+    } finally {
+      _resumingTaskIds.remove(localId);
     }
+  }
+
+  /// 检查指定 serverTaskId 的任务是否正在内部处理中
+  /// （供 HistoryPage 判断是否需要外部轮询）
+  bool isInternallyProcessing(String serverTaskId) {
+    return tasks.any((t) =>
+        t.serverStemTaskId == serverTaskId &&
+        (_processingTaskIds.contains(t.stemTaskId) ||
+         _resumingTaskIds.contains(t.stemTaskId)));
   }
 
   /// P2: 任务完成后延迟自动从本地队列清除（给 UI 过渡时间）
   void _scheduleAutoRemove(String localId) {
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    Future.delayed(const Duration(seconds: 3), () {
       final still = tasks.any((t) => t.stemTaskId == localId && t.isCompleted);
       if (still) {
         tasksNotifier.value = tasks.where((t) => t.stemTaskId != localId).toList();

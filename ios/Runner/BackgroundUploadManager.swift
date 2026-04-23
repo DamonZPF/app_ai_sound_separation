@@ -112,13 +112,6 @@ class BackgroundUploadManager: NSObject, FlutterPlugin, URLSessionDataDelegate, 
             }
             handleUploadChunk(args: args, result: result)
 
-        case "mergeChunks":
-            guard let args = call.arguments as? [String: Any] else {
-                result(FlutterError(code: "INVALID_ARGS", message: "参数错误", details: nil))
-                return
-            }
-            handleMergeChunks(args: args, result: result)
-
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -246,47 +239,7 @@ class BackgroundUploadManager: NSObject, FlutterPlugin, URLSessionDataDelegate, 
         }
     }
 
-    // MARK: - 合并请求
 
-    private func handleMergeChunks(args: [String: Any], result: @escaping FlutterResult) {
-        guard let mergeUrl = args["mergeUrl"] as? String,
-              let apiKey = args["apiKey"] as? String,
-              let uploadId = args["uploadId"] as? String else {
-            result(FlutterError(code: "MISSING_PARAMS", message: "缺少必要参数", details: nil))
-            return
-        }
-
-        // 合并是 GET 请求，用 dataTask 而非 uploadTask
-        // 但 background session 不支持 dataTask, 所以用空文件的 upload task
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-
-            let tempFileURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("merge_\(uploadId).tmp")
-
-            do {
-                // 写入空数据
-                try Data().write(to: tempFileURL)
-
-                var request = URLRequest(url: URL(string: mergeUrl)!)
-                request.httpMethod = "GET"
-                request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
-
-                let mergeUploadId = "\(uploadId)_merge"
-                let task = self.activeSession.uploadTask(with: request, fromFile: tempFileURL)
-                self.taskIdMap[task.taskIdentifier] = mergeUploadId
-                task.resume()
-
-                DispatchQueue.main.async {
-                    result(true)
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    result(FlutterError(code: "MERGE_ERROR", message: "合并请求失败: \(error.localizedDescription)", details: nil))
-                }
-            }
-        }
-    }
 
     // MARK: - URLSessionDataDelegate — 接收响应体数据
 
@@ -435,7 +388,6 @@ class BackgroundUploadManager: NSObject, FlutterPlugin, URLSessionDataDelegate, 
         // 尝试清理可能的临时文件
         let patterns = [
             "upload_\(uploadId).tmp",
-            "merge_\(uploadId).tmp",
         ]
 
         for pattern in patterns {

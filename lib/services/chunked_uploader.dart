@@ -72,6 +72,9 @@ class _ChunkedUploader {
     _chunkProgress = List.filled(totalChunks, 0);
   }
 
+  /// 服务端自动合并后返回的 stem_task_id（最后一块上传完成时填充）
+  String _autoMergedStemTaskId = '';
+
   static String _randomString(int length) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final rng = Random();
@@ -115,6 +118,7 @@ class _ChunkedUploader {
 
   /// 上传单个分块（通过原生后台通道，含重试）
   /// 每个分块独立重试，超时保护 180 秒
+  /// 服务端在最后一块上传完成后自动合并，返回 stem_task_id
   Future<void> _uploadChunkWithRetry(int index) async {
     final chunkOffset = index * opts.chunkSize;
     final chunkLength = min(opts.chunkSize, opts.totalSize - chunkOffset);
@@ -123,8 +127,7 @@ class _ChunkedUploader {
       if (aborted) return;
 
       try {
-        // 添加超时保护：单个分块最多等待 120 秒
-        await _bgChannel.uploadChunk(
+        final stemTaskId = await _bgChannel.uploadChunk(
           filePath: opts.filePath,
           uploadId: identifier,
           chunkIndex: index,
@@ -134,8 +137,11 @@ class _ChunkedUploader {
           fileName: opts.fileName,
           totalChunks: totalChunks,
           totalSize: opts.totalSize,
+          userId: opts.userId,
+          stem: opts.stem,
+          trackTitle: opts.trackTitle,
+          outputFormat: opts.outputFormat,
           onProgress: (p) {
-            // 更新此分块的进度并计算总进度
             _chunkProgress[index] = p;
             _reportAggregateProgress();
           },
@@ -150,6 +156,11 @@ class _ChunkedUploader {
         _chunkProgress[index] = 100;
         _reportAggregateProgress();
 
+        // 收集自动合并返回的 stem_task_id
+        if (stemTaskId.isNotEmpty) {
+          _autoMergedStemTaskId = stemTaskId;
+        }
+
         debugPrint(
             '[ChunkedUpload] ✅ 分块 ${index + 1}/$totalChunks 完成');
         return;
@@ -157,12 +168,10 @@ class _ChunkedUploader {
         debugPrint(
             '[ChunkedUpload] 分块 $index 第 $attempt/$maxChunkRetries 次失败: $e');
 
-        // 失败重置此分块进度
         _chunkProgress[index] = 0;
 
         if (attempt >= maxChunkRetries) rethrow;
 
-        // 指数退避：1s → 2s → 4s → 8s → 10s（上限）
         final waitMs = min(1000 * pow(2, attempt - 1).toInt(), 10000);
         debugPrint('[ChunkedUpload] ⏳ 等待 ${waitMs}ms 后重试分块 $index (第 $attempt 次失败)...');
         await Future.delayed(Duration(milliseconds: waitMs));
@@ -204,43 +213,6 @@ class _ChunkedUploader {
     }
   }
 
-  /// 合并分块（通过原生后台通道，含重试）
-  Future<void> _mergeChunks() async {
-    debugPrint('[ChunkedUpload] 🔗 所有分块上传完成，请求合并...');
-    opts.onProgress?.call(47);
-
-    const maxMergeRetries = 3;
-    for (int attempt = 1; attempt <= maxMergeRetries; attempt++) {
-      try {
-        final stemTaskId = await _bgChannel.mergeChunks(
-          uploadId: identifier,
-          identifier: identifier,
-          fileName: opts.fileName,
-          userId: opts.userId,
-          stem: opts.stem,
-          trackTitle: opts.trackTitle,
-          outputFormat: opts.outputFormat,
-        ).timeout(
-          const Duration(seconds: 120),
-          onTimeout: () {
-            throw TimeoutException('Merge request timeout (120s)', const Duration(seconds: 120));
-          },
-        );
-
-        debugPrint('[ChunkedUpload] ✅ 合并成功，stem_task_id: $stemTaskId');
-        opts.onProgress?.call(50);
-        opts.onComplete?.call(stemTaskId);
-        return;
-      } catch (e) {
-        debugPrint('[ChunkedUpload] 合并请求第 $attempt/$maxMergeRetries 次失败: $e');
-        if (attempt >= maxMergeRetries) rethrow;
-        final waitMs = 2000 * attempt;
-        debugPrint('[ChunkedUpload] ⏳ 等待 ${waitMs}ms 后重试合并...');
-        await Future.delayed(Duration(milliseconds: waitMs));
-      }
-    }
-  }
-
   /// 主上传流程
   Future<void> run() async {
     try {
@@ -259,7 +231,14 @@ class _ChunkedUploader {
       await _runWithConcurrency(tasks, opts.maxConcurrency);
 
       if (!aborted) {
-        await _mergeChunks();
+        // 服务端自动合并，从最后一块的响应中获取 stem_task_id
+        if (_autoMergedStemTaskId.isEmpty) {
+          _handleError('Server did not return stem_task_id after auto-merge');
+          return;
+        }
+        debugPrint('[ChunkedUpload] ✅ 分块上传完成，stem_task_id: $_autoMergedStemTaskId');
+        opts.onProgress?.call(50);
+        opts.onComplete?.call(_autoMergedStemTaskId);
       }
     } catch (e) {
       _handleError(e.toString());

@@ -96,11 +96,12 @@ class BackgroundUploadChannel {
   }
 
   // ----------------------------------------------------------
-  // 分块上传
+  // 分块上传（服务端自动合并：最后一块上传完成后自动合并并返回 stem_task_id）
   // ----------------------------------------------------------
 
-  /// 上传单个分块，返回 Future（完成 or 失败）
-  Future<void> uploadChunk({
+  /// 上传单个分块
+  /// 返回 stem_task_id（最后一块自动合并时返回）或空字符串（非最后一块）
+  Future<String> uploadChunk({
     required String filePath,
     required String uploadId,
     required int chunkIndex,
@@ -110,15 +111,30 @@ class BackgroundUploadChannel {
     required String fileName,
     required int totalChunks,
     required int totalSize,
+    required String userId,
+    required String stem,
+    required String trackTitle,
+    String outputFormat = 'mp3',
     void Function(int progress)? onProgress,
   }) async {
     final chunkUploadId = '${uploadId}_chunk_$chunkIndex';
-    final completer = Completer<void>();
+    final completer = Completer<String>();
 
     _callbacks[chunkUploadId] = _UploadCallbacks(
       onProgress: onProgress,
-      onComplete: (_) {
-        completer.complete();
+      onComplete: (body) {
+        // 解析响应：如果服务端自动合并了，会返回 stem_task_id
+        String stemTaskId = '';
+        try {
+          final data = json.decode(body) as Map<String, dynamic>;
+          stemTaskId = data['stem_task_id']?.toString() ?? '';
+          if (stemTaskId.isNotEmpty) {
+            debugPrint('[BGUpload] 🎉 自动合并完成, stem_task_id: $stemTaskId');
+          }
+        } catch (_) {
+          // 非 JSON 响应或解析失败，正常（非最后一块时不含 stem_task_id）
+        }
+        completer.complete(stemTaskId);
         _callbacks.remove(chunkUploadId);
       },
       onError: (error) {
@@ -127,11 +143,16 @@ class BackgroundUploadChannel {
       },
     );
 
+    // 构建 URL：包含分块信息 + 分轨参数（让服务端在最后一块时自动合并）
     final url =
         '${Env.stemApiUrl}/stem/chunk/upload?identifier=${Uri.encodeComponent(identifier)}'
         '&index=$chunkIndex&chunkSize=$chunkLength'
         '&fileName=${Uri.encodeComponent(fileName)}'
-        '&totalChunks=$totalChunks&totalSize=$totalSize';
+        '&totalChunks=$totalChunks&totalSize=$totalSize'
+        '&stem=${Uri.encodeComponent(stem)}'
+        '&user_id=${Uri.encodeComponent(userId)}'
+        '&track_title=${Uri.encodeComponent(trackTitle)}'
+        '&output_format=${Uri.encodeComponent(outputFormat)}';
 
     try {
       await _methodChannel.invokeMethod('uploadChunk', {
@@ -151,70 +172,7 @@ class BackgroundUploadChannel {
     return completer.future;
   }
 
-  // ----------------------------------------------------------
-  // 合并分块
-  // ----------------------------------------------------------
 
-  /// 请求服务端合并分块，返回 stem_task_id
-  Future<String> mergeChunks({
-    required String uploadId,
-    required String identifier,
-    required String fileName,
-    required String userId,
-    required String stem,
-    required String trackTitle,
-    String outputFormat = 'mp3',
-  }) async {
-    final mergeUploadId = '${uploadId}_merge';
-    final completer = Completer<String>();
-
-    _callbacks[mergeUploadId] = _UploadCallbacks(
-      onComplete: (body) {
-        try {
-          final data = json.decode(body) as Map<String, dynamic>;
-          final stemTaskId = data['stem_task_id']?.toString() ?? '';
-          if (stemTaskId.isEmpty) {
-            completer.completeError(Exception('Merge response missing stem_task_id'));
-          } else {
-            completer.complete(stemTaskId);
-          }
-        } catch (e) {
-          completer.completeError(Exception('Failed to parse merge response: $e'));
-        }
-        _callbacks.remove(mergeUploadId);
-      },
-      onError: (error) {
-        completer.completeError(Exception(error));
-        _callbacks.remove(mergeUploadId);
-      },
-    );
-
-    final params = {
-      'identifier': identifier,
-      'fileName': fileName,
-      'user_id': userId,
-      'stem': stem,
-      'track_title': trackTitle,
-      'output_format': outputFormat,
-    };
-    final queryStr = params.entries
-        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-        .join('&');
-    final mergeUrl = '${Env.stemApiUrl}/stem/chunk/merge?$queryStr';
-
-    try {
-      await _methodChannel.invokeMethod('mergeChunks', {
-        'mergeUrl': mergeUrl,
-        'apiKey': Env.stemApiKey,
-        'uploadId': uploadId,
-      });
-    } catch (e) {
-      _callbacks.remove(mergeUploadId);
-      rethrow;
-    }
-
-    return completer.future;
-  }
 
   // ----------------------------------------------------------
   // 事件处理
